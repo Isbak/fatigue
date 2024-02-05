@@ -1,0 +1,86 @@
+[solution]
+run_type = "FAT"
+format = "TimeSeries"
+mode = "ASCII"
+units = "MPA"
+output = "JSON"
+
+[solution.stress_criteria]
+number = 24
+method = "SXXCRIT"
+extreme = "YIELD"
+
+[solution.mean]
+mean = "NONE"
+postfix = "FIXEDMEAN"
+number = ""
+
+[solution.node]
+from = 690103
+to = 690103
+software = "None"
+path = "None"
+
+[solution.damage]
+error = 0.0
+dadm = 1.0
+
+[material]
+name = "Steel"
+youngs_modulus = 210000.0
+poissons_ratio = 0.3
+yield_stress = 355.0
+ultimate_stress = 510.0
+hardening_modulus = 0.0
+hardening_exponent = 0.0
+
+[material.fatigue.slope]
+m1 = 3
+m2 = 5
+
+[material.fatigue.knee]
+cycle = 5000000
+stress = 52.0
+
+[material.fatigue.cutoff]
+max = 440
+min = 1
+
+[safety_factor]
+gmre = 1.0
+gmrm = 1.0
+gmfat = 1.35
+
+[[load_case]]
+load = "LC1.TXT"
+options = "NONE"
+scale = 0.001
+sensor = "MXMBF"
+path = "None"
+
+[[load_case]]
+load = "LC2.TXT"
+options = "NONE"
+scale = 0.001
+sensor = "MYMBR"
+path = "None"
+
+
+[math.constants]
+a = 5
+b = 3
+
+[math.variables]
+max_value = "max(a, b)"
+sin_of_a = "sin(a)"
+cos_of_b = "cos(b)"
+a_plus_b = "a + b"
+a_minus_b = "a - b"
+product = "a * b"
+average = "(a + b) / 2"
+sin_plus_cos = "sin_of_a + cos_of_b"
+max_plus_product = "max_value + product"
+final_expression = "average + sin_plus_cos + max_plus_product"
+
+[math.expressions]
+order = ["max_value", "sin_of_a", "cos_of_b", "a_plus_b", "a_minus_b", "product", "average", "sin_plus_cos", "max_plus_product", "final_expression"]
