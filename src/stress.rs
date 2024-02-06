@@ -1,5 +1,10 @@
 extern crate nalgebra as na;
 use na::{Matrix3, SymmetricEigen, Vector3, Vector6, Const};
+use rayon::prelude::*;
+use std::fs::File;
+use std::io::{self, BufReader, prelude::*};
+use std::path::Path;
+use crate::config::{Config, LoadCaseConfig}; // Ensure you import your Config and LoadCaseConfig
 
 pub struct StressTensor {
     matrix: Matrix3<f64>,
@@ -104,4 +109,37 @@ mod tests {
         );
         assert_relative_eq!(direction_calc, direction, epsilon = 1e-3);
     }
+}
+
+fn read_stress_tensors_from_file(
+    load_case_config: &LoadCaseConfig,
+) -> io::Result<Vec<(usize, StressTensor)>> {
+    let file_path = Path::new(&load_case_config.path).join(&load_case_config.load);
+    let file = File::open(file_path)?;
+    let reader = BufReader::new(file);
+    let mut tensors = Vec::new();
+
+    let lines = reader.lines().skip(load_case_config.parse_config.header);
+
+    for line in lines {
+        let line = line?;
+        let delimiter = &load_case_config.parse_config.delimiter.chars().next().unwrap_or(' ').to_string();
+        let values: Vec<f64> =  line.split(delimiter)
+            .filter_map(|s| s.trim().parse().ok())
+            .collect();
+
+        if values.len() == 7 {
+            let node_number = values[0] as usize;
+            let matrix = Matrix3::new(
+                values[1], values[4], values[6],
+                values[4], values[2], values[5],
+                values[6], values[5], values[3],
+            );
+
+            let tensor = StressTensor::new(matrix);
+            tensors.push((node_number, tensor));
+        }
+    }
+
+    Ok(tensors)
 }

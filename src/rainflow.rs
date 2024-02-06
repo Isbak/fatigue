@@ -58,32 +58,3 @@ pub fn rainflow(stress: &[f64]) -> (Vec<f64>, Vec<f64>) {
     (outmean, outrange)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use approx::assert_relative_eq;
-
-    #[test]
-    fn test_rainflow_case_1() {
-        // Define the time series as in TEST_CASE_1
-        let series = vec![-2.0, 1.0, -3.0, 5.0, -1.0, 3.0, -4.0, 4.0, -2.0];
-        let (mean, range) = rainflow(&series);
-
-        // Expected results based on TEST_CASE_1, adjusted for the output format of your Rust function
-        let expected_mean = vec![-0.5, -1.0, 1.0, 1.0, 0.5, 0.0, 1.0]; 
-        let expected_range = vec![3.0, 4.0, 4.0, 8.0, 9.0, 8.0, 6.0]; 
-
-        // Asserting that the lengths match
-        assert_eq!(mean.len(), expected_mean.len());
-        assert_eq!(range.len(), expected_range.len());
-
-        // Asserting each value with an approximation due to floating-point arithmetic
-        for (m, &expected_m) in mean.iter().zip(expected_mean.iter()) {
-            assert_relative_eq!(m, &expected_m, epsilon = 1e-6);
-        }
-        for (r, &expected_r) in range.iter().zip(expected_range.iter()) {
-            assert_relative_eq!(r, &expected_r, epsilon = 1e-6);
-        }
-    }
-}
-

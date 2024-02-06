@@ -20,6 +20,7 @@ pub struct Config {
     pub solution: Solution,
     pub material: Material,
     pub safety_factor: SafetyFactor,
+    pub load_cases: Vec<LoadCaseConfig>,
     pub parameters: HashMap<String, f64>,
     pub variables: HashMap<String, String>,
     pub expressions: Expressions,
@@ -54,6 +55,54 @@ impl Config {
         
         Ok(())
     }
+}
+
+
+#[derive(Debug, Deserialize)]
+pub struct LoadCaseConfig {
+    pub load: String,
+    pub parse_config: LoadCaseParseConfig,
+    pub scale: f64,
+    pub timeseries: String,
+    pub path: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LoadCaseParseConfig {
+    pub delimiter: String,
+    pub header: usize,
+}
+
+impl LoadCaseParseConfig {
+    pub fn validate(&self) -> Result<(), ValidationError> {
+        if self.delimiter.trim().is_empty() {
+            return Err(ValidationError("delimiter must not be empty".into()));
+        }
+        if self.header < 0 {
+            return Err(ValidationError(format!("header must be greater than or equal to 0, got {}", self.header)));
+        }
+        Ok(())
+    }
+}
+
+impl LoadCaseConfig {
+    pub fn validate(&self) -> Result<(), ValidationError> {
+        if self.load.trim().is_empty() {
+            return Err(ValidationError("load must not be empty".into()));
+        }
+        if self.scale.is_nan() {
+            return Err(ValidationError(format!("scale must be a number, got {}", self.scale)));
+        }
+        if self.timeseries.trim().is_empty() {
+            return Err(ValidationError("timeseries must not be empty".into()));
+        }
+        if self.path.trim().is_empty() {
+            return Err(ValidationError("path must not be empty".into()));
+        }
+        self.parse_config.validate()?;
+        Ok(())
+    }
+    
 }
 
 #[derive(Debug, Deserialize)]

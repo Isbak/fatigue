@@ -1,8 +1,11 @@
 use crate::config::load_config;
+use crate::parser::parse_input;
 
 pub fn run(config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Running with configuration: {}", config_path);
     let conf = load_config(config_path)?;
+    let res = parse_input(&conf);
+    println!("Results: {:?}", res);
     if let Err(err) = conf.validate() {
         // Handle the error here
         println!("Validation error: {:?}", err);

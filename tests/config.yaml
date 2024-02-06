@@ -1,8 +1,8 @@
 solution:
   # General configuration for the simulation run
   run_type: "FAT" # Specifies the run type as fatigue analysis
-  format: "TimeSeries" # Input data format
-  mode: "STRESS" # Mode for input/output files
+  format: "TimeSeries" # Input data format binary or TimeSeries
+  mode: "STRESS" # Mode of analysis
   units: "MPA" # Units for stress/strain values
   output: "JSON" # Output data format
   stress_criteria:
@@ -56,17 +56,24 @@ safety_factor:
   gmrm: 1.0 # Safety factor for material reserve
   gmfat: 1.35 # Safety factor for fatigue
 
-load_case:
+load_cases:
   # Load case configurations
   - load: "LC1.TXT" # Load case file
-    options: "NONE" # Additional options
+    parse_config: 
+      # Configuration for parsing load case file
+      delimiter: " " # Delimiter for load case file
+      header: 0 # Header rows in load case file
+      # fixed_length: 0 # Fixed length for load case file
     scale: 0.001 # Scale factor for load case
-    sensor: "MXMBF" # Sensor type
+    timeseries: "MXMBF" # Sensor type
     path: "None" # Path for load case files
   - load: "LC2.TXT"
-    options: "NONE"
+    parse_config: 
+      # Configuration for parsing load case file
+      delimiter: " " # Delimiter for load case file
+      header: 0 # Header rows in load case file
     scale: 0.001
-    sensor: "MYMBR"
+    timeseries: "MYMBR"
     path: "None"
 
 parameters:
