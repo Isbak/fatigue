@@ -1,0 +1,90 @@
+solution:
+  # General configuration for the simulation run
+  run_type: "FAT" # Specifies the run type as fatigue analysis
+  format: "TimeSeries" # Input data format
+  mode: "STRESS" # Mode for input/output files
+  units: "MPA" # Units for stress/strain values
+  output: "JSON" # Output data format
+  stress_criteria:
+    # Criteria for stress evaluation
+    number: 24 # Number of stress points to evaluate
+    method: "SXXCRIT" # Method used for stress evaluation
+    extreme: "YIELD" # Stress extreme value consideration
+  mean:
+    # Configuration for mean stress correction
+    mean: "NONE" # Type of mean stress
+    postfix: "FIXEDMEAN" # Postfix for mean stress correction
+    number: 0 # Placeholder for future use
+  node:
+    # Node selection for analysis
+    from: 690103 # Starting node ID
+    to: 690103 # Ending node ID
+    software: "NONE" # Software used for node data
+    path: "NONE" # Path for node data files
+  damage:
+    # Damage model parameters
+    error: 0.0 # Error tolerance
+    dadm: 1.0 # Damage accumulation method
+
+material:
+  # Material properties
+  name: "Steel" # Material name
+  youngs_modulus: 210000.0 # Young's modulus in MPa
+  poissons_ratio: 0.3 # Poisson's ratio
+  yield_stress: 355.0 # Yield stress in MPa
+  ultimate_stress: 510.0 # Ultimate stress in MPa
+  hardening_modulus: 0.0 # Hardening modulus
+  hardening_exponent: 0.0 # Hardening exponent
+  fatigue:
+    # Fatigue properties
+    slope:
+      # Slope parameters for SN curve
+      m1: 3 # Slope before the knee
+      m2: 5 # Slope after the knee
+    knee:
+      # Knee point for the SN curve
+      cycle: 5000000 # Cycle count at knee
+      stress: 52.0 # Stress at knee in MPa
+    cutoff:
+      # Cutoff values for SN curve
+      max: 440 # Maximum stress
+      min: 1 # Minimum stress
+
+safety_factor:
+  # Safety factors for different calculations
+  gmre: 1.0 # Safety factor for elastic reserve
+  gmrm: 1.0 # Safety factor for material reserve
+  gmfat: 1.35 # Safety factor for fatigue
+
+load_case:
+  # Load case configurations
+  - load: "LC1.TXT" # Load case file
+    options: "NONE" # Additional options
+    scale: 0.001 # Scale factor for load case
+    sensor: "MXMBF" # Sensor type
+    path: "None" # Path for load case files
+  - load: "LC2.TXT"
+    options: "NONE"
+    scale: 0.001
+    sensor: "MYMBR"
+    path: "None"
+
+parameters:
+  a: 5
+  b: 3
+
+variables:
+  max_value: "max(a, b)"
+  sin_of_a: "math::sin(a)"
+  cos_of_b: "math::cos(b)"
+  a_plus_b: "a + b"
+  a_minus_b: "a - b"
+  product: "a * b"
+  average: "(a + b) / 2"
+  sin_plus_cos: "sin_of_a + cos_of_b"
+  max_plus_product: "max_value + product"
+  final_expression: "average + sin_plus_cos + max_plus_product"
+
+expressions:
+  # Order of evaluation for expressions
+  order: ["max_value", "sin_of_a", "cos_of_b", "a_plus_b", "a_minus_b", "product", "average", "sin_plus_cos", "max_plus_product", "final_expression"]

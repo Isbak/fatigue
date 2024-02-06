@@ -4,6 +4,7 @@ mod app_logic;
 mod rainflow;
 mod config;
 mod stress;
+mod parser;
 
 fn main() {
     let matches = Command::new("Fatigue")

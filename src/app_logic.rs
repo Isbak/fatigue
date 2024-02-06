@@ -1,4 +1,4 @@
-use crate::config::{load_config};
+use crate::config::load_config;
 
 pub fn run(config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Running with configuration: {}", config_path);

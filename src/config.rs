@@ -1,5 +1,10 @@
 use serde::Deserialize;
 use std::fmt;
+use std::fs;
+use std::path::Path;
+use serde_yaml;
+use regex::Regex;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct ValidationError(String);
@@ -12,9 +17,12 @@ impl fmt::Display for ValidationError {
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    solution: Solution,
-    material: Material,
-    safety_factor: SafetyFactor,
+    pub solution: Solution,
+    pub material: Material,
+    pub safety_factor: SafetyFactor,
+    pub parameters: HashMap<String, f64>,
+    pub variables: HashMap<String, String>,
+    pub expressions: Expressions,
 }
 
 impl Config {
@@ -22,21 +30,57 @@ impl Config {
         self.solution.validate()?;
         self.material.validate()?;
         self.safety_factor.validate()?;
+        self.expressions.validate()?;
+        
+        let re = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
+        
+        for (key, value) in &self.variables {
+            if !re.is_match(key) {
+                return Err(ValidationError(format!("Invalid variable name: {}", key)));
+            }
+            if value.trim().is_empty() {
+                return Err(ValidationError(format!("Variable expression is empty for: {}", key)));
+            }
+        }
+
+        for (key, value) in &self.parameters {
+            if key.trim().is_empty() {
+                return Err(ValidationError("parameter key must not be empty".into()));
+            }
+            if value.is_nan() {
+                return Err(ValidationError(format!("parameter value must be a number, got {}", value)));
+            }
+        }
+        
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Expressions {
+    pub order: Vec<String>,
+}
+
+impl Expressions {
+    pub fn validate(&self) -> Result<(), ValidationError> {
+        if self.order.is_empty() {
+            return Err(ValidationError("order must not be empty".into()));
+        }
         Ok(())
     }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Solution {
-    run_type: String,
-    format: String,
-    mode: String,
-    units: String,
-    output: String,
-    stress_criteria: StressCriteria,
-    mean: Mean,
-    node: Node,
-    damage: Damage,
+    pub run_type: String,
+    pub format: String,
+    pub mode: String,
+    pub units: String,
+    pub output: String,
+    pub stress_criteria: StressCriteria,
+    pub mean: Mean,
+    pub node: Node,
+    pub damage: Damage,
 }
 
 impl Solution {
@@ -62,7 +106,7 @@ impl Solution {
         }?;
 
         match self.output.as_str() {
-            "ANSYS" | "ASCII" => Ok(()),
+            "ANSYS" | "ASCII" | "JSON" => Ok(()),
             _ => Err(ValidationError(format!("output must be ANSYS or ASCII, got {}", self.output))),
         }?;
 
@@ -76,9 +120,9 @@ impl Solution {
 
 #[derive(Debug, Deserialize)]
 pub struct StressCriteria {
-    number: Option<i32>,
-    method: String,
-    extreme: String,
+    pub number: Option<i32>,
+    pub method: String,
+    pub extreme: String,
 }
 
 impl StressCriteria {
@@ -104,9 +148,9 @@ impl StressCriteria {
 
 #[derive(Debug, Deserialize)]
 pub struct Mean {
-    mean: String,
-    postfix: String,
-    number: String,
+    pub mean: String,
+    pub postfix: String,
+    pub number: String,
 }
 
 impl Mean {
@@ -132,10 +176,10 @@ impl Mean {
 
 #[derive(Debug, Deserialize)]
 pub struct Node {
-    from: i32,
-    to: i32,
-    software: String,
-    path: String,
+    pub from: i32,
+    pub to: i32,
+    pub software: String,
+    pub path: String,
 }
 
 impl Node {
@@ -169,8 +213,8 @@ impl Node {
 
 #[derive(Debug, Deserialize)]
 pub struct Damage {
-    error: f64,
-    dadm: f64,
+    pub error: f64,
+    pub dadm: f64,
 }
 
 impl Damage {
@@ -187,14 +231,14 @@ impl Damage {
 
 #[derive(Debug, Deserialize)]
 pub struct Material {
-    name: String,
-    youngs_modulus: f64,
-    poissons_ratio: f64,
-    yield_stress: f64,
-    ultimate_stress: f64,
-    hardening_modulus: f64,
-    hardening_exponent: f64,
-    fatigue: Fatigue,
+    pub name: String,
+    pub youngs_modulus: f64,
+    pub poissons_ratio: f64,
+    pub yield_stress: f64,
+    pub ultimate_stress: f64,
+    pub hardening_modulus: f64,
+    pub hardening_exponent: f64,
+    pub fatigue: Fatigue,
 }
 
 impl Material {
@@ -228,9 +272,9 @@ impl Material {
 
 #[derive(Debug, Deserialize)]
 pub struct Fatigue {
-    slope: Slope,
-    knee: Knee,
-    cutoff: Cutoff,
+    pub slope: Slope,
+    pub knee: Knee,
+    pub cutoff: Cutoff,
 }
 
 impl Fatigue {
@@ -245,8 +289,8 @@ impl Fatigue {
 
 #[derive(Debug, Deserialize)]
 pub struct Slope {
-    m1: i32,
-    m2: i32,
+    pub m1: i32,
+    pub m2: i32,
 }
 
 impl Slope {
@@ -264,8 +308,8 @@ impl Slope {
 
 #[derive(Debug, Deserialize)]
 pub struct Knee {
-    cycle: i64,
-    stress: f64,
+    pub cycle: i64,
+    pub stress: f64,
 }
 
 impl Knee {
@@ -283,8 +327,8 @@ impl Knee {
 
 #[derive(Debug, Deserialize)]
 pub struct Cutoff {
-    max: f64,
-    min: f64,
+    pub max: f64,
+    pub min: f64,
 }
 
 impl Cutoff {
@@ -302,9 +346,9 @@ impl Cutoff {
 
 #[derive(Debug, Deserialize)]
 pub struct SafetyFactor {
-    gmre: f64,
-    gmrm: f64,
-    gmfat: f64,
+    pub gmre: f64,
+    pub gmrm: f64,
+    pub gmfat: f64,
 }
 
 impl SafetyFactor {
@@ -323,9 +367,10 @@ impl SafetyFactor {
     }
 }
 
-pub fn load_config(config_path: &str) -> Result<Config, Box<dyn std::error::Error>> {
-    let config_str = std::fs::read_to_string(config_path)?;
-    let config: Config = toml::from_str(&config_str)?;
+// Add the load_config function to read from YAML
+pub fn load_config<P: AsRef<Path>>(config_path: P) -> Result<Config, Box<dyn std::error::Error>> {
+    let content = fs::read_to_string(config_path)?;
+    let config: Config = serde_yaml::from_str(&content)?;
     Ok(config)
 }
 
@@ -335,10 +380,9 @@ mod tests {
 
     #[test]
     fn test_load_config() {
-        let config_path = "tests/config_test.toml"; // Adjust the path as needed
-        let config = load_config(config_path).unwrap();
-        assert_eq!(config.solution.run_type, "FAT");
-        assert_eq!(config.solution.format, "TimeSeries");
-        // Continue asserting for other fields as needed
+        let config_path = "tests/config.yaml"; // Adjust the path as needed
+        let config = load_config(config_path).expect("Failed to load config");
+        assert!(config.validate().is_ok(), "Expected Ok(()) but got Err with {:?}", config.validate());
+        // Additional tests as needed
     }
 }
