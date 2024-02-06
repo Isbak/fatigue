@@ -1,5 +1,4 @@
-use evalexpr::{eval_with_context, Context, ContextWithMutableVariables, HashMapContext, Value};
-use rayon::result;
+use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, Value};
 use std::collections::HashMap;
 use crate::config::Config; // Adjust this import based on your actual module structure
 
@@ -16,27 +15,27 @@ pub fn parse_input(config: &Config) -> Result<HashMap<String, Value>, String> {
     }
 
     // Insert variables into context with actual values
-    for (key, expression) in config.variables.iter() {
-        match eval_with_context(&expression, &context) {
-            Ok(value) => {
-                if context.set_value(key.clone(), value.clone()).is_err() {
-                    return Err(format!("Failed to insert variable '{}' with value '{:?}' into context", key, value));
+    for key in &config.expressions.order {
+        let expression = config.variables
+        .get(key)
+        .ok_or_else(|| format!("Variable '{}' not found in config", key))?;
+        match eval_with_context(expression, &context) {
+            Ok(result) => {
+                // Insert the result of the evaluation into the context
+                if context.set_value(key.to_string(), result.clone()).is_err() {
+                    return Err(format!("Failed to insert result for variable '{}' into context", key));
                 }
             },
-            Err(e) => return Err(format!("Failed to evaluate variable '{}' with expression '{}': {}", key, expression, e)),
+            Err(e) => return Err(format!("Failed to evaluate expression for variable '{}': {}", key, e)),
         }
     }
 
     let mut results = HashMap::new();
-
     // Evaluate expressions based on the specified order
     for key in &config.expressions.order {
         if let Some(expression) = config.variables.get(key).map(|vars| vars) {
             match eval_with_context(expression, &context) {
-                Ok(result) => {
-                    // Assuming result is of type Value and you want to insert/update it in the context
-                    context.set_value(key.clone(), result.clone()).map_err(|e| format!("Failed to update context for key '{}': {}", key, e))?;
-    
+                Ok(result) => {   
                     // Also insert the result into the results hashmap
                     results.insert(key.clone(), result);
                 },
@@ -73,5 +72,8 @@ mod tests {
         assert!(sin_of_a_result.is_some(), "sin_of_a not found or not a float");
         // Compare floating point numbers within a small range to account for float precision issues
         assert!((sin_of_a_result.unwrap() - f64::sin(5.0)).abs() < 1e-6, "sin_of_a should match the sine of 5.0");
+
+        let final_expression = results.get("final_expression").and_then(|v| v.as_float().ok());
+        assert!((final_expression.unwrap() - 22.051083228736417).abs() < 1e-6, "Should match 22.0510832");
     }
 }
