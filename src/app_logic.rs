@@ -1,10 +1,15 @@
 use crate::config::load_config;
 use crate::parser::parse_input;
+pub use crate::stress::read_stress_tensors_from_file;
 
 pub fn run(config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Running with configuration: {}", config_path);
     let conf = load_config(config_path)?;
     let res = parse_input(&conf);
+    for lc in &conf.load_cases {
+        let stress = read_stress_tensors_from_file(lc);
+        println!("Stress tensors: {:?}", stress);
+    }
     println!("Results: {:?}", res);
     if let Err(err) = conf.validate() {
         // Handle the error here

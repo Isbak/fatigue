@@ -1,11 +1,11 @@
 extern crate nalgebra as na;
-use na::{Matrix3, SymmetricEigen, Vector3, Vector6, Const};
-use rayon::prelude::*;
+use na::{Matrix3, SymmetricEigen, Vector6, Const};
 use std::fs::File;
 use std::io::{self, BufReader, prelude::*};
 use std::path::Path;
-use crate::config::{Config, LoadCaseConfig}; // Ensure you import your Config and LoadCaseConfig
+use crate::config::{LoadCaseConfig, LoadCaseParseConfig}; // Ensure you import your Config and LoadCaseConfig
 
+#[derive(Debug)]
 pub struct StressTensor {
     matrix: Matrix3<f64>,
     vector: Vector6<f64>,
@@ -78,40 +78,7 @@ impl StressTensor {
     // Add more methods as needed, e.g., to get principal directions, etc.
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use approx::assert_relative_eq;
-
-    #[test]
-    fn test_stress_tensor() {
-        let matrix = Matrix3::new(
-            1.0, 0.0, 2.0,
-            0.0, 0.0, 0.0,
-            2.0, 0.0, 3.0,
-        );
-        let mut stress = StressTensor::new(matrix);        
-        let max_principal_stress = stress.max_principal_stress();
-        assert_relative_eq!(max_principal_stress, 4.2360679774997898, epsilon = 1e-6);
-        let von_mises_stress = stress.von_mises_stress();
-        assert_relative_eq!(von_mises_stress, 4.358898943540674, epsilon = 1e-6);
-        let matrix = Matrix3::new(
-            -17.863839999999999, 1.54556, 0.016324870000000002,
-            1.54556, -12.711300000000002, -0.013930999999999999,
-            0.016324870000000002, -0.013930999999999999, -14.825930000000001,
-        );
-        let mut stress = StressTensor::new(matrix);            
-        let direction_calc = stress.principal_direction();
-        let direction = Matrix3::new(
-            0.267,  0.964,   -0.004 ,
-            -0.006,  -0.002, -1.000,
-            -0.964, 0.267,  0.006,
-        );
-        assert_relative_eq!(direction_calc, direction, epsilon = 1e-3);
-    }
-}
-
-fn read_stress_tensors_from_file(
+pub fn read_stress_tensors_from_file(
     load_case_config: &LoadCaseConfig,
 ) -> io::Result<Vec<(usize, StressTensor)>> {
     let file_path = Path::new(&load_case_config.path).join(&load_case_config.load);
@@ -127,7 +94,6 @@ fn read_stress_tensors_from_file(
         let values: Vec<f64> =  line.split(delimiter)
             .filter_map(|s| s.trim().parse().ok())
             .collect();
-
         if values.len() == 7 {
             let node_number = values[0] as usize;
             let matrix = Matrix3::new(
@@ -142,4 +108,90 @@ fn read_stress_tensors_from_file(
     }
 
     Ok(tensors)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn test_stress_tensor() {
+        let matrix = Matrix3::new(
+            1.0, 0.0, 2.0,
+            0.0, 0.0, 0.0,
+            2.0, 0.0, 3.0,
+        );
+        let stress = StressTensor::new(matrix);        
+        let max_principal_stress = stress.max_principal_stress();
+        assert_relative_eq!(max_principal_stress, 4.2360679774997898, epsilon = 1e-6);
+        let von_mises_stress = stress.von_mises_stress();
+        assert_relative_eq!(von_mises_stress, 4.358898943540674, epsilon = 1e-6);
+        let matrix = Matrix3::new(
+            -17.863839999999999, 1.54556, 0.016324870000000002,
+            1.54556, -12.711300000000002, -0.013930999999999999,
+            0.016324870000000002, -0.013930999999999999, -14.825930000000001,
+        );
+        let stress = StressTensor::new(matrix);            
+        let direction_calc = stress.principal_direction();
+        let direction = Matrix3::new(
+            0.267,  0.964,   -0.004 ,
+            -0.006,  -0.002, -1.000,
+            -0.964, 0.267,  0.006,
+        );
+        assert_relative_eq!(direction_calc, direction, epsilon = 1e-3);
+    }
+
+    #[test]
+    fn test_update_stress_and_vector_usage() {
+        let initial_matrix = Matrix3::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0);
+        let mut stress_tensor = StressTensor::new(initial_matrix);
+        // Initial vector check
+        let expected_initial_vector = Vector6::new(1.0, 5.0, 9.0, 2.0, 6.0, 3.0);
+        assert_eq!(stress_tensor.vector, expected_initial_vector);
+    
+        // Update stress
+        let updated_matrix = Matrix3::new(9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0);
+        stress_tensor.update_stress(updated_matrix);
+        // Updated vector check
+        let expected_updated_vector = Vector6::new(9.0, 5.0, 1.0, 8.0, 4.0, 7.0);
+        assert_eq!(stress_tensor.vector, expected_updated_vector);
+    }
+
+    #[test]
+    fn test_vector_to_matrix_conversion() {
+        let vector = Vector6::new(1.0, 5.0, 9.0, 2.0, 6.0, 3.0);
+        let expected_matrix = Matrix3::new(1.0, 2.0, 3.0, 2.0, 5.0, 6.0, 3.0, 6.0, 9.0);
+        let matrix = StressTensor::vector_to_matrix(&vector);
+        assert_eq!(matrix, expected_matrix);
+    }
+
+    #[test]
+    fn test_read_stress_tensors_from_file() -> io::Result<()> {
+        // Assuming LoadCaseConfig is structured something like this
+        let load_case_config = LoadCaseConfig {
+            path: "tests/stressfile".to_string(), // Base path to your test files
+            load: "Fx.usf".into(), // Specific test file name
+            scale: 1.0, // Assuming a scale factor
+            timeseries: String::from(""), 
+            parse_config: LoadCaseParseConfig {
+                header: 1, // Assuming the first line is a header
+                delimiter: " ".into(), // Assuming comma-delimited values, adjust as necessary
+            },
+        };
+
+        // Call the function with the test config
+        let tensors = read_stress_tensors_from_file(&load_case_config)?;
+
+        // Assert that tensors are read correctly
+        // The exact assertions will depend on the expected content of your test file
+        // For example, if you know the specific tensors that should be parsed, assert those
+        assert!(!tensors.is_empty(), "Tensors should not be empty");
+        // Example assertion: check for a specific tensor value or node number
+        // assert_eq!(tensors[0].0, expected_node_number);
+        // assert_eq!(tensors[0].1.matrix, expected_matrix);
+
+        Ok(())
+    }    
 }

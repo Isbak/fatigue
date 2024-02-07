@@ -32,7 +32,9 @@ impl Config {
         self.material.validate()?;
         self.safety_factor.validate()?;
         self.expressions.validate()?;
-        
+        for lc in &self.load_cases {
+            lc.validate()?;
+        }
         let re = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
         
         for (key, value) in &self.variables {
@@ -75,11 +77,8 @@ pub struct LoadCaseParseConfig {
 
 impl LoadCaseParseConfig {
     pub fn validate(&self) -> Result<(), ValidationError> {
-        if self.delimiter.trim().is_empty() {
+        if self.delimiter.is_empty() {
             return Err(ValidationError("delimiter must not be empty".into()));
-        }
-        if self.header < 0 {
-            return Err(ValidationError(format!("header must be greater than or equal to 0, got {}", self.header)));
         }
         Ok(())
     }
@@ -87,6 +86,7 @@ impl LoadCaseParseConfig {
 
 impl LoadCaseConfig {
     pub fn validate(&self) -> Result<(), ValidationError> {
+        self.parse_config.validate()?;
         if self.load.trim().is_empty() {
             return Err(ValidationError("load must not be empty".into()));
         }
