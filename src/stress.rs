@@ -115,7 +115,54 @@ pub fn read_stress_tensors_from_file(
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
+    use na::Vector3;
 
+    #[test]
+    fn test_vector_to_matrix_conversion() {
+        let vector = Vector6::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+        let expected_matrix = Matrix3::new(1.0, 4.0, 6.0, 4.0, 2.0, 5.0, 6.0, 5.0, 3.0);
+        let matrix = StressTensor::vector_to_matrix(&vector);
+        assert_eq!(matrix, expected_matrix);
+    }
+
+    #[test]
+    fn test_update_stress() {
+        let initial_matrix = Matrix3::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let mut stress_tensor = StressTensor::new(initial_matrix);
+        let new_matrix = Matrix3::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0);
+        stress_tensor.update_stress(new_matrix);
+        assert_eq!(stress_tensor.matrix, new_matrix);
+        let expected_vector = Vector6::new(1.0, 5.0, 9.0, 2.0, 6.0, 3.0);
+        assert_eq!(stress_tensor.vector, expected_vector);
+    }
+
+    #[test]
+    fn test_principal_stresses() {
+        let matrix = Matrix3::new(1.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 3.0);
+        let stress_tensor = StressTensor::new(matrix);
+        let principal_stresses = stress_tensor.principal_stresses();
+        let expected_eigenvalues = Vector3::new(1.0, 2.0, 3.0); // Assuming sorted
+        assert_eq!(principal_stresses.eigenvalues, expected_eigenvalues);
+    }
+
+    #[test]
+    fn test_max_principal_stress() {
+        let matrix = Matrix3::new(3.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 2.0);
+        let stress_tensor = StressTensor::new(matrix);
+        let max_stress = stress_tensor.max_principal_stress();
+        assert_eq!(max_stress, 3.0);
+    }
+
+    #[test]
+    fn test_von_mises_stress() {
+        let matrix = Matrix3::new(1.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 3.0);
+        let stress_tensor = StressTensor::new(matrix);
+        let von_mises = stress_tensor.von_mises_stress();
+        // Ensure literals are typed as f64 to match the expected type in calculations
+        let expected_von_mises = (((1.0_f64 - 2.0_f64).powi(2) + (2.0_f64 - 3.0_f64).powi(2) + (3.0_f64 - 1.0_f64).powi(2)) / 2.0_f64).sqrt();
+        assert_eq!(von_mises, expected_von_mises);
+    }
+   
     #[test]
     fn test_stress_tensor() {
         let matrix = Matrix3::new(
@@ -157,14 +204,6 @@ mod tests {
         // Updated vector check
         let expected_updated_vector = Vector6::new(9.0, 5.0, 1.0, 8.0, 4.0, 7.0);
         assert_eq!(stress_tensor.vector, expected_updated_vector);
-    }
-
-    #[test]
-    fn test_vector_to_matrix_conversion() {
-        let vector = Vector6::new(1.0, 5.0, 9.0, 2.0, 6.0, 3.0);
-        let expected_matrix = Matrix3::new(1.0, 2.0, 3.0, 2.0, 5.0, 6.0, 3.0, 6.0, 9.0);
-        let matrix = StressTensor::vector_to_matrix(&vector);
-        assert_eq!(matrix, expected_matrix);
     }
 
     #[test]
