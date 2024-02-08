@@ -56,25 +56,34 @@ safety_factor:
   gmrm: 1.0 # Safety factor for material reserve
   gmfat: 1.35 # Safety factor for fatigue
 
-load_cases:
-  # Load case configurations
-  - load: "LC1.TXT" # Load case file
-    parse_config: 
-      # Configuration for parsing load case file
-      delimiter: " " # Delimiter for load case file
-      header: 0 # Header rows in load case file
-      # fixed_length: 0 # Fixed length for load case file
-    scale: 0.001 # Scale factor for load case
-    timeseries: "MXMBF" # Sensor type
-    path: "None" # Path for load case files
-  - load: "LC2.TXT"
-    parse_config: 
-      # Configuration for parsing load case file
-      delimiter: " " # Delimiter for load case file
-      header: 0 # Header rows in load case file
-    scale: 0.001
-    timeseries: "MYMBR"
-    path: "None"
+timeseries:
+  # Time series configuration
+  sensors: 
+    path: "None" # Path for time series files containing the sensor data
+    parse_function: "None" # Parse function for time series files
+  interpolation:
+    method: "LINEAR" # Interpolation method
+    name: "StressTimeseries" # Sensor type
+    path: "tests/stresfile" # Path for the unit stress files needed for the interpolation
+    parse_config:
+      header: 1 # Header lines in the file
+      delimiter: " " # Delimiter for the file
+    scale: 0.001 # Scale factor for interpolation
+    dimension: 3 # Dimension for interpolation
+    sensor: ["FX", "FY", "FZ"] # Sensor for interpolation point 1
+    points:
+    - point: [0, 0, 0] # Interpolation point 1
+      file: "Fx.usf" # File for interpolation point 1
+      value: [1.0, 0.0, 0.0] # Value for interpolation point 2
+    - point: [1, 0, 0] # Interpolation point 2
+      file: "FX1FY0FZ0.usf" # File for interpolation point 2
+      value: [1.0, 0.0, 0.0] # Value for interpolation point 2
+    - point: [0, 1, 0] # Interpolation point 3
+      file: "FX0FY1FZ0.usf" # File for interpolation point 3
+      value: [0.0, 1.0, 0.0] # Value for interpolation point 3
+    - point: [0, 0, 1] # Interpolation point 4
+      file: "FX0FY0FZ1.usf" # File for interpolation point 4
+      value: [0.0, 0.0, 1.0] # Value for interpolation point 4
 
 parameters:
   a: 5

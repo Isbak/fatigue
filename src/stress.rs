@@ -3,7 +3,7 @@ use na::{Matrix3, SymmetricEigen, Vector6, Const};
 use std::fs::File;
 use std::io::{self, BufReader, prelude::*};
 use std::path::Path;
-use crate::config::{LoadCaseConfig, LoadCaseParseConfig}; // Ensure you import your Config and LoadCaseConfig
+use crate::config::{Interpolation, ParseConfig, Point}; // Ensure you import your Config and LoadCaseConfig
 
 #[derive(Debug)]
 pub struct StressTensor {
@@ -78,19 +78,17 @@ impl StressTensor {
     // Add more methods as needed, e.g., to get principal directions, etc.
 }
 
-pub fn read_stress_tensors_from_file(
-    load_case_config: &LoadCaseConfig,
-) -> io::Result<Vec<(usize, StressTensor)>> {
-    let file_path = Path::new(&load_case_config.path).join(&load_case_config.load);
+pub fn read_stress_tensors_from_file(inerp: &Interpolation, point: &Point) -> io::Result<Vec<(usize, StressTensor)>> {
+    let file_path = Path::new(&inerp.path).join(&point.file);
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
     let mut tensors = Vec::new();
 
-    let lines = reader.lines().skip(load_case_config.parse_config.header);
+    let lines = reader.lines().skip(inerp.parse_config.header);
 
     for line in lines {
         let line = line?;
-        let delimiter = &load_case_config.parse_config.delimiter.chars().next().unwrap_or(' ').to_string();
+        let delimiter = &inerp.parse_config.delimiter.chars().next().unwrap_or(' ').to_string();
         let values: Vec<f64> =  line.split(delimiter)
             .filter_map(|s| s.trim().parse().ok())
             .collect();
@@ -209,19 +207,30 @@ mod tests {
     #[test]
     fn test_read_stress_tensors_from_file() -> io::Result<()> {
         // Assuming LoadCaseConfig is structured something like this
-        let load_case_config = LoadCaseConfig {
+        let interp = Interpolation {
+            method: "LINEAR".to_string(), // Assuming interpolation method
+            name: "StressTimeseries".to_string(), // Name of the time series
             path: "tests/stressfile".to_string(), // Base path to your test files
-            load: "Fx.usf".into(), // Specific test file name
-            scale: 1.0, // Assuming a scale factor
-            timeseries: String::from(""), 
-            parse_config: LoadCaseParseConfig {
+            scale: 1.0, // Scale factor
+            dimension: 3, // Dimension for interpolation
+            sensor: vec!["FX".into(), "FY".into(), "FZ".into()], // Sensors for interpolation
+            points: vec![
+                Point {
+                    point: vec![0, 0, 0], // Example interpolation point, adjust as necessary
+                    file: "Fx.usf".into(), // File for interpolation point
+                    value: vec![0.0, 0.0, 0.0], // Assuming no specific value is provided; adjust if necessary
+                },
+            ],
+            parse_config: ParseConfig {
                 header: 1, // Assuming the first line is a header
-                delimiter: " ".into(), // Assuming comma-delimited values, adjust as necessary
+                delimiter: " ".into(), // Assuming space-delimited values
             },
         };
+        
+        
 
         // Call the function with the test config
-        let tensors = read_stress_tensors_from_file(&load_case_config)?;
+        let tensors = read_stress_tensors_from_file(&interp, &interp.points[0])?;
 
         // Assert that tensors are read correctly
         // The exact assertions will depend on the expected content of your test file

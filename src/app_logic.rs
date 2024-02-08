@@ -6,8 +6,8 @@ pub fn run(config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Running with configuration: {}", config_path);
     let conf = load_config(config_path)?;
     let res = parse_input(&conf);
-    for lc in &conf.load_cases {
-        let stress = read_stress_tensors_from_file(lc);
+    for point in &conf.timeseries.interpolation.points {
+        let stress = read_stress_tensors_from_file(&conf.timeseries.interpolation, point);
         println!("Stress tensors: {:?}", stress);
     }
     println!("Results: {:?}", res);

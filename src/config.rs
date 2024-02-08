@@ -20,7 +20,7 @@ pub struct Config {
     pub solution: Solution,
     pub material: Material,
     pub safety_factor: SafetyFactor,
-    pub load_cases: Vec<LoadCaseConfig>,
+    pub timeseries: TimeSeries,
     pub parameters: HashMap<String, f64>,
     pub variables: HashMap<String, String>,
     pub expressions: Expressions,
@@ -32,9 +32,7 @@ impl Config {
         self.material.validate()?;
         self.safety_factor.validate()?;
         self.expressions.validate()?;
-        for lc in &self.load_cases {
-            lc.validate()?;
-        }
+        self.timeseries.validate()?;
         let re = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
         
         for (key, value) in &self.variables {
@@ -59,23 +57,25 @@ impl Config {
     }
 }
 
-
 #[derive(Debug, Deserialize)]
-pub struct LoadCaseConfig {
-    pub load: String,
-    pub parse_config: LoadCaseParseConfig,
-    pub scale: f64,
-    pub timeseries: String,
-    pub path: String,
+pub struct TimeSeries {
+    pub sensors: Sensors,
+    pub interpolation: Interpolation,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct LoadCaseParseConfig {
-    pub delimiter: String,
+pub struct Sensors {
+    pub path: Option<String>,
+    pub parse_function: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ParseConfig {
     pub header: usize,
+    pub delimiter: String,
 }
 
-impl LoadCaseParseConfig {
+impl ParseConfig {
     pub fn validate(&self) -> Result<(), ValidationError> {
         if self.delimiter.is_empty() {
             return Err(ValidationError("delimiter must not be empty".into()));
@@ -84,25 +84,83 @@ impl LoadCaseParseConfig {
     }
 }
 
-impl LoadCaseConfig {
+#[derive(Debug, Deserialize)]
+pub struct Interpolation {
+    pub method: String,
+    pub name: String,
+    pub path: String,
+    pub parse_config: ParseConfig,
+    pub scale: f64,
+    pub dimension: usize,
+    pub sensor: Vec<String>,
+    pub points: Vec<Point>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Point {
+    pub point: Vec<i32>,
+    pub file: String,
+    pub value: Vec<f64>,
+}
+
+impl Sensors {
+    pub fn validate(&self) -> Result<(), ValidationError> {
+        if self.path.is_none() && self.parse_function.is_none() {
+            return Err(ValidationError("path and parse_function cannot both be None".into()));
+        }
+        Ok(())
+    }
+}
+
+impl Interpolation {
     pub fn validate(&self) -> Result<(), ValidationError> {
         self.parse_config.validate()?;
-        if self.load.trim().is_empty() {
-            return Err(ValidationError("load must not be empty".into()));
+        match self.method.as_str() {
+            "LINEAR" | "CUBIC" | "NONE" => Ok(()),
+            _ => Err(ValidationError(format!("method must be LINEAR, CUBIC, or NONE, got {}", self.method))),
+        }?;
+        if self.name.trim().is_empty() {
+            return Err(ValidationError("name must not be empty".into()));
         }
-        if self.scale.is_nan() {
-            return Err(ValidationError(format!("scale must be a number, got {}", self.scale)));
-        }
-        if self.timeseries.trim().is_empty() {
-            return Err(ValidationError("timeseries must not be empty".into()));
-        }
+
         if self.path.trim().is_empty() {
             return Err(ValidationError("path must not be empty".into()));
         }
-        self.parse_config.validate()?;
+        if self.scale < 0.0 {
+            return Err(ValidationError(format!("scale must be greater than 0.0, got {}", self.scale)));
+        }
+        // Validate the dimension and sensor vector length condition
+        if self.sensor.len() != self.dimension {
+            return Err(ValidationError(format!("When dimension is {}, the sensor vector must also have a length of 3. Found length: {}", self.dimension, self.sensor.len())));
+        }
+        if self.sensor.is_empty() {
+            return Err(ValidationError("sensor must not be empty".into()));
+        }
+
+        if self.points.is_empty() {
+            return Err(ValidationError("points must not be empty".into()));
+        }
+        for point in &self.points {
+            if point.file.trim().is_empty() {
+                return Err(ValidationError("file must not be empty".into()));
+            }
+            if point.value.len() != self.dimension {
+                return Err(ValidationError(format!("When dimension is {}, the values per point must also have a length of 3. Found length: {}", self.dimension, point.value.len())));
+            }
+            if point.value.is_empty() {
+                return Err(ValidationError("value must not be empty".into()));
+            }
+        }
         Ok(())
     }
-    
+}
+
+impl TimeSeries {
+    pub fn validate(&self) -> Result<(), ValidationError> {
+        self.sensors.validate()?;
+        self.interpolation.validate()?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Deserialize)]
