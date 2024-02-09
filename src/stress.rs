@@ -4,8 +4,9 @@ use na::{Matrix3, SymmetricEigen, Vector6, Const};
 use std::fs::File;
 use std::io::{self, BufReader, prelude::*};
 use std::path::Path;
-use crate::config::{Interpolation, ParseConfig, Point}; // Ensure you import your Config and LoadCaseConfig
+use crate::timeseries::{Interpolation, ParseConfig, Point}; // Ensure you import your Config and LoadCaseConfig
 
+/// A struct representing a stress tensor where the stress components are stored in a 3x3 matrix and a 6x1 vector
 #[derive(Debug)]
 pub struct StressTensor {
     matrix: Matrix3<f64>,
@@ -19,7 +20,7 @@ impl StressTensor {
         StressTensor { matrix, vector }
     }
 
-    // Converts a Matrix3 to a Vector6 following Voigt notation
+    /// Converts a Matrix3 to a Vector6 following Voigt notation
     fn matrix_to_vector(matrix: &Matrix3<f64>) -> Vector6<f64> {
         Vector6::new(
             matrix[(0, 0)], // σxx
@@ -31,7 +32,7 @@ impl StressTensor {
         )
     }
 
-    // Converts the internal Vector6 back to a Matrix3
+    /// Converts the internal Vector6 back to a Matrix3
     fn vector_to_matrix(vector: &Vector6<f64>) -> Matrix3<f64> {
         Matrix3::new(
             vector[0], vector[3], vector[5], // Row 1: σxx, τxy, τzx
@@ -76,8 +77,6 @@ impl StressTensor {
         let s3 = principal_stresses.eigenvalues[2];
         (((s1 - s2).powi(2) + (s2 - s3).powi(2) + (s3 - s1).powi(2)) / 2.0).sqrt()
     }
-
-    // Add more methods as needed, e.g., to get principal directions, etc.
 }
 
 // Read stress tensors from a file

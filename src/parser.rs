@@ -2,7 +2,7 @@
 use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, Value};
 use std::collections::HashMap;
 use nalgebra::Vector6;
-use crate::config::TimeSeries; // Adjust this import based on your actual module structure
+use crate::timeseries::TimeSeries; // Adjust this import based on your actual module structure
 
 pub fn parse_input(ts: &TimeSeries) -> Result<HashMap<String, Value>, String> {
     let mut context = HashMapContext::new();

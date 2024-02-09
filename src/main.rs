@@ -6,6 +6,8 @@ mod rainflow;
 mod config;
 mod stress;
 mod parser;
+mod material;
+mod timeseries;
 
 /// Main function for the application with a CLI interface using clap for argument parsing and subcommands
 /// The main function should be used to parse the command line arguments and execute the application logic
