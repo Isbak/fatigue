@@ -1,15 +1,12 @@
 solution:
   # General configuration for the simulation run
   run_type: "FAT" # Specifies the run type as fatigue analysis
-  format: "TimeSeries" # Input data format binary or TimeSeries
   mode: "STRESS" # Mode of analysis
-  units: "MPA" # Units for stress/strain values
   output: "JSON" # Output data format
   stress_criteria:
     # Criteria for stress evaluation
     number: 24 # Number of stress points to evaluate
     method: "SXXCRIT" # Method used for stress evaluation
-    extreme: "YIELD" # Stress extreme value consideration
   mean:
     # Configuration for mean stress correction
     mean: "NONE" # Type of mean stress
@@ -19,11 +16,10 @@ solution:
     # Node selection for analysis
     from: 690103 # Starting node ID
     to: 690103 # Ending node ID
-    software: "NONE" # Software used for node data
     path: "NONE" # Path for node data files
   damage:
     # Damage model parameters
-    error: 0.0 # Error tolerance
+    error: 0.01 # Error tolerance
     dadm: 1.0 # Damage accumulation method
 
 material:
@@ -33,8 +29,6 @@ material:
   poissons_ratio: 0.3 # Poisson's ratio
   yield_stress: 355.0 # Yield stress in MPa
   ultimate_stress: 510.0 # Ultimate stress in MPa
-  hardening_modulus: 0.0 # Hardening modulus
-  hardening_exponent: 0.0 # Hardening exponent
   fatigue:
     # Fatigue properties
     slope:
@@ -58,49 +52,62 @@ safety_factor:
 
 timeseries:
   # Time series configuration
-  sensors: 
-    path: "None" # Path for time series files containing the sensor data
-    parse_function: "None" # Parse function for time series files
-  interpolation:
-    method: "LINEAR" # Interpolation method
-    name: "StressTimeseries" # Sensor type
-    path: "tests/stresfile" # Path for the unit stress files needed for the interpolation
-    parse_config:
-      header: 1 # Header lines in the file
-      delimiter: " " # Delimiter for the file
-    scale: 0.001 # Scale factor for interpolation
-    dimension: 3 # Dimension for interpolation
-    sensor: ["FX", "FY", "FZ"] # Sensor for interpolation point 1
-    points:
-    - point: [0, 0, 0] # Interpolation point 1
-      file: "Fx.usf" # File for interpolation point 1
-      value: [1.0, 0.0, 0.0] # Value for interpolation point 2
-    - point: [1, 0, 0] # Interpolation point 2
-      file: "FX1FY0FZ0.usf" # File for interpolation point 2
-      value: [1.0, 0.0, 0.0] # Value for interpolation point 2
-    - point: [0, 1, 0] # Interpolation point 3
-      file: "FX0FY1FZ0.usf" # File for interpolation point 3
-      value: [0.0, 1.0, 0.0] # Value for interpolation point 3
-    - point: [0, 0, 1] # Interpolation point 4
-      file: "FX0FY0FZ1.usf" # File for interpolation point 4
-      value: [0.0, 0.0, 1.0] # Value for interpolation point 4
+  path: "tests/timeseries" # Path for time series files containing the sensor data
+  sensorfile: "tests/timeseries/sensors.json" # Path for sensor data files specifying the sensors and their locations in the time series files
+  interpolations:
+    - name: "StressTimeseries" # Sensor type
+      method: "LINEAR" # Interpolation method
+      path: "tests/stresfile" # Path for the unit stress files needed for the interpolation
+      parse_config:
+        header: 1 # Header lines in the file
+        delimiter: " " # Delimiter for the file
+      scale: 0.001 # Scale factor for interpolation
+      dimension: 3 # Dimension for interpolation
+      sensor: ["Fx", "Fy", "Fz"] # Sensor for interpolation point 1
+      points:
+      - point: [0, 0, 0] # Interpolation point 1
+        file: "FX0FY0FZ0.usf" # File for interpolation point 1
+        value: [1.0, 0.0, 0.0] # Value for interpolation point 2
+      - point: [1, 0, 0] # Interpolation point 2
+        file: "FX1FY0FZ0.usf" # File for interpolation point 2
+        value: [1.0, 0.0, 0.0] # Value for interpolation point 2
+      - point: [0, 1, 0] # Interpolation point 3
+        file: "FX0FY1FZ0.usf" # File for interpolation point 3
+        value: [0.0, 1.0, 0.0] # Value for interpolation point 3
+      - point: [0, 0, 1] # Interpolation point 4
+        file: "FX0FY0FZ1.usf" # File for interpolation point 4
+        value: [0.0, 0.0, 1.0] # Value for interpolation point 4
+        
+  loadcases:
+  - loadcase: 
+    fam: 1 
+    file: "time_series_sensors_example_1.csv" 
+    frequency: 9634.400
+    gf_ext: 1.35
+    gf_fat: 1.00
+  - loadcase: 
+    fam: 1 
+    file: "time_series_sensors_example_2.csv" 
+    frequency: 94.400
+    gf_ext: 1.35
+    gf_fat: 1.00
 
-parameters:
-  a: 5
-  b: 3
+  parameters:
+    a: 5
+    b: 3
 
-variables:
-  max_value: "max(a, b)"
-  sin_of_a: "math::sin(a)"
-  cos_of_b: "math::cos(b)"
-  a_plus_b: "a + b"
-  a_minus_b: "a - b"
-  product: "a * b"
-  average: "(a + b) / 2"
-  sin_plus_cos: "sin_of_a + cos_of_b"
-  max_plus_product: "max_value + product"
-  final_expression: "average + sin_plus_cos + max_plus_product"
+  variables:
+    max_value: "max(a, b)"
+    sin_of_a: "math::sin(a)"
+    cos_of_b: "math::cos(b)"
+    a_plus_b: "a + b"
+    a_minus_b: "a - b"
+    product: "a * b"
+    average: "(a + b) / 2"
+    sin_plus_cos: "sin_of_a + cos_of_b"
+    max_plus_product: "max_value + product"
+    final_expression: "average + sin_plus_cos + max_plus_product"
 
-expressions:
-  # Order of evaluation for expressions
-  order: ["max_value", "sin_of_a", "cos_of_b", "a_plus_b", "a_minus_b", "product", "average", "sin_plus_cos", "max_plus_product", "final_expression"]
+  expressions:
+    # Order of evaluation for expressions
+    order: ["max_value", "sin_of_a", "cos_of_b", "a_plus_b", "a_minus_b", "product", "average", "sin_plus_cos", "max_plus_product", "final_expression"]

@@ -1,3 +1,4 @@
+//! A module for stress tensor operations
 extern crate nalgebra as na;
 use na::{Matrix3, SymmetricEigen, Vector6, Const};
 use std::fs::File;
@@ -11,6 +12,7 @@ pub struct StressTensor {
     vector: Vector6<f64>,
 }
 
+/// StressTensor implementation
 impl StressTensor {
     pub fn new(matrix: Matrix3<f64>) -> Self {
         let vector = Self::matrix_to_vector(&matrix);
@@ -78,6 +80,7 @@ impl StressTensor {
     // Add more methods as needed, e.g., to get principal directions, etc.
 }
 
+// Read stress tensors from a file
 pub fn read_stress_tensors_from_file(inerp: &Interpolation, point: &Point) -> io::Result<Vec<(usize, StressTensor)>> {
     let file_path = Path::new(&inerp.path).join(&point.file);
     let file = File::open(file_path)?;
@@ -227,8 +230,6 @@ mod tests {
             },
         };
         
-        
-
         // Call the function with the test config
         let tensors = read_stress_tensors_from_file(&interp, &interp.points[0])?;
 

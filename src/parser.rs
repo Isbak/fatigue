@@ -1,12 +1,14 @@
+//! A module for parsing and evaluating mathematical expressions
 use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, Value};
 use std::collections::HashMap;
-use crate::config::Config; // Adjust this import based on your actual module structure
+use nalgebra::Vector6;
+use crate::config::TimeSeries; // Adjust this import based on your actual module structure
 
-pub fn parse_input(config: &Config) -> Result<HashMap<String, Value>, String> {
+pub fn parse_input(ts: &TimeSeries) -> Result<HashMap<String, Value>, String> {
     let mut context = HashMapContext::new();
-    
+
     // Insert parameters into context
-    for (key, value) in &config.parameters {
+    for (key, value) in &ts.parameters {
         println!("key: {:#?}", key);
         println!("value: {:#?}", value);
         if context.set_value(key.clone(), (*value).into()).is_err() {
@@ -15,8 +17,8 @@ pub fn parse_input(config: &Config) -> Result<HashMap<String, Value>, String> {
     }
 
     // Insert variables into context with actual values
-    for key in &config.expressions.order {
-        let expression = config.variables
+    for key in &ts.expressions.order {
+        let expression = ts.variables
         .get(key)
         .ok_or_else(|| format!("Variable '{}' not found in config", key))?;
         match eval_with_context(expression, &context) {
@@ -32,8 +34,8 @@ pub fn parse_input(config: &Config) -> Result<HashMap<String, Value>, String> {
 
     let mut results = HashMap::new();
     // Evaluate expressions based on the specified order
-    for key in &config.expressions.order {
-        if let Some(expression) = config.variables.get(key).map(|vars| vars) {
+    for key in &ts.expressions.order {
+        if let Some(expression) = ts.variables.get(key).map(|vars| vars) {
             match eval_with_context(expression, &context) {
                 Ok(result) => {   
                     // Also insert the result into the results hashmap
@@ -61,7 +63,7 @@ mod tests {
 
         println!("config: {:#?}", config);
 
-        let results = parse_input(&config).expect("Failed to parse input");
+        let results = parse_input(&config.timeseries).expect("Failed to parse input");
         println!("Results: {:#?}", results);
         // Example of improved error handling in test assertions
         let max_value_result = results.get("max_value").and_then(|v| v.as_float().ok());

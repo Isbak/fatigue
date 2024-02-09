@@ -1,0 +1,5 @@
+[
+    {"no": 1, "correction": 0, "unit": "[N]", "name": "Fx", "description": "Sinus load FX"},
+    {"no": 2, "correction": 0, "unit": "[N]", "name": "Fy", "description": "Sinus load FY"},
+    {"no": 3, "correction": 0, "unit": "[N]", "name": "Fz", "description": "Sinus load FZ"}
+]
