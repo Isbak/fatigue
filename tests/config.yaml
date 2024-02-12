@@ -91,6 +91,24 @@ timeseries:
     frequency: 94.400
     gf_ext: 1.35
     gf_fat: 1.00
+  - loadcase: 
+    fam: 1 
+    file: "time_series_sensors_example_3.csv" 
+    frequency: 9224.400
+    gf_ext: 1.35
+    gf_fat: 1.00
+  - loadcase: 
+    fam: 1 
+    file: "time_series_sensors_example_4.csv" 
+    frequency: 1974.400
+    gf_ext: 1.35
+    gf_fat: 1.00
+  - loadcase: 
+    fam: 1 
+    file: "time_series_sensors_example_5.csv" 
+    frequency: 47945.400
+    gf_ext: 1.35
+    gf_fat: 1.00
 
   parameters:
     a: 5

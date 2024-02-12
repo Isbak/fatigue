@@ -1,11 +1,11 @@
 
 //! A module for the main application logic for the fatigue assessment tool
 use clap::{Arg, Command};
-mod app_logic;
 mod rainflow;
+mod app_logic;
 mod config;
 mod stress;
-mod parser;
+mod interpolate;
 mod material;
 mod timeseries;
 
@@ -33,16 +33,23 @@ fn main() {
         )
         .arg(
             Arg::new("mode")
+                .short('m') // Corrected: Use a character without the dash
                 .long("mode")
                 .value_name("MODE")
                 .help("Sets the execution mode: cloud or local")
                 .required(true),
         )
+        .arg(
+            Arg::new("rainflow")
+                .short('a') // Corrected: Use a character without the dash
+                .long("rainflow")
+                .help("Perform rainflow counting on the input data, assumes input is a binary file containing a time series of float 32 in a specific format (e.g., .bin with ) and outputs the rainflow cycles to a file")
+                .required(true),
+        )        
         .after_help("Longer explanation to appear after the options when \
                      displaying the help information from --help or -h")
         .get_matches();
     if let Some(r) = matches.get_one::<String>("run") {
         let _ = app_logic::run(r);
-    }
+    }   
 }
-

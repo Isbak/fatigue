@@ -38,7 +38,9 @@ cargo build --release
 
 ## Usage
 Here are some examples of how you can use the application or library:
-TBD
+```sh
+fatigue -run yourconfig.yaml
+```
 
 ## Contributing
 We welcome contributions from the community! Please see our CONTRIBUTING.md file for guidelines on how to make contributions.

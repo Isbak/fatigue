@@ -3,10 +3,9 @@ use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use regex::Regex;
 use serde_json::from_str;
-use std::io::{self, BufRead};
-use std::fs::File;
 use std::path::Path;
 use std::fs;
+use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, Value};
 
 use crate::config::ValidationError;
 
@@ -89,8 +88,8 @@ impl Interpolation {
     pub fn validate(&self) -> Result<(), ValidationError> {
         self.parse_config.validate()?;
         match self.method.as_str() {
-            "LINEAR" | "CUBIC" | "NONE" => Ok(()),
-            _ => Err(ValidationError::new(&format!("method must be LINEAR, CUBIC, or NONE, got {}", self.method))),
+            "LINEAR" | "NEAREST" | "NONE" => Ok(()),
+            _ => Err(ValidationError::new(&format!("method must be LINEAR, NEAREST, or NONE, got {}", self.method))),
         }?;
         if self.name.trim().is_empty() {
             return Err(ValidationError::new("name must not be empty".into()));
@@ -268,46 +267,53 @@ impl TimeSeries {
         Ok(())
     }
 
-    /// Performs interpolation based on the provided load cases and interpolation configurations.
-    ///
-    /// This method processes each load case, applying the specified interpolation method to
-    /// the time series data. The actual implementation of the interpolation logic may vary.
-    ///
-    /// # Returns
-    ///
-    /// Returns `Ok(())` upon successful completion of all interpolations. Otherwise,
-    /// returns an `io::Error` detailing any issues encountered during the process.
-    pub fn interpolate(&self) -> Result<(), io::Error> {
-        // Applies interpolation to the load cases based on specified methods and configurations.
-        for lc in &self.loadcases {
-            println!("Processing load case: {}", lc.file);
-            let lc_file_path = format!("{}/{}", self.path, lc.file);
-            let lc_data = Self::read_loadcase_file(&lc_file_path)?;
-            
-            for interp in &self.interpolations {
-                println!("Interpolating with: {}", interp.name);
-                // Simplified: Apply linear interpolation based on the provided points
-                // Note: Actual implementation will vary based on how you're applying these interpolations
+     pub fn parse_input(&self) -> Result<HashMap<String, Value>, String> {
+        let mut context = HashMapContext::new();
+    
+        // Insert parameters into context
+        for (key, value) in &self.parameters {
+            println!("key: {:#?}", key);
+            println!("value: {:#?}", value);
+            if context.set_value(key.clone(), (*value).into()).is_err() {
+                return Err(format!("Failed to insert parameter '{}' into context", key));
             }
         }
-        Ok(())
-    } 
-    /// Reads and returns the content of a load case file specified by path.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - The file path to the load case data.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `Result` containing a vector of strings, each representing a line of the file,
-    /// if successful. Otherwise, returns an `io::Error` detailing the issue encountered.
-    pub fn read_loadcase_file(path: &str) -> Result<Vec<String>, io::Error> {
-        // Reads the content of the load case file, returning it line by line.
-        let file = File::open(path)?;
-        let buf = io::BufReader::new(file);
-        buf.lines().collect()
+    
+        // Insert variables into context with actual values
+        for key in &self.expressions.order {
+            let expression = self.variables
+            .get(key)
+            .ok_or_else(|| format!("Variable '{}' not found in config", key))?;
+            match eval_with_context(expression, &context) {
+                Ok(result) => {
+                    // Insert the result of the evaluation into the context
+                    if context.set_value(key.to_string(), result.clone()).is_err() {
+                        return Err(format!("Failed to insert result for variable '{}' into context", key));
+                    }
+                },
+                Err(e) => return Err(format!("Failed to evaluate expression for variable '{}': {}", key, e)),
+            }
+        }
+    
+        let mut results = HashMap::new();
+        // Evaluate expressions based on the specified order
+        for key in &self.expressions.order {
+            if let Some(expression) = self.variables.get(key).map(|vars| vars) {
+                match eval_with_context(expression, &context) {
+                    Ok(result) => {   
+                        // Also insert the result into the results hashmap
+                        results.insert(key.clone(), result);
+                    },
+                    Err(e) => {
+                        return Err(format!("Failed to evaluate expression '{}' for key '{}': {}", expression, key, e));
+                    }
+                }
+            }
+        }
+    
+        Ok(results)
     }
+
 }
 
 /// Represents the order in which expressions should be evaluated in a structural analysis context.
@@ -365,4 +371,33 @@ pub struct SensorFile {
     pub unit: String,
     pub name: String,
     pub description: String,
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::config::load_config; // Ensure this is correctly imported
+
+    #[test]
+    fn test_parse_input() {
+        let config_path = "tests/config.yaml";
+        let config = load_config(config_path).expect("Failed to load config");
+
+        println!("config: {:#?}", config);
+
+        let results = config.timeseries.parse_input().expect("Failed to parse input");
+        println!("Results: {:#?}", results);
+        // Example of improved error handling in test assertions
+        let max_value_result = results.get("max_value").and_then(|v| v.as_float().ok());
+        assert!(max_value_result.is_some(), "max_value not found or not a float");
+        assert_eq!(max_value_result.unwrap(), 5.0, "max_value should be 5.0");
+
+        let sin_of_a_result = results.get("sin_of_a").and_then(|v| v.as_float().ok());
+        assert!(sin_of_a_result.is_some(), "sin_of_a not found or not a float");
+        // Compare floating point numbers within a small range to account for float precision issues
+        assert!((sin_of_a_result.unwrap() - f64::sin(5.0)).abs() < 1e-6, "sin_of_a should match the sine of 5.0");
+
+        let final_expression = results.get("final_expression").and_then(|v| v.as_float().ok());
+        assert!((final_expression.unwrap() - 22.051083228736417).abs() < 1e-6, "Should match 22.0510832");
+    }
 }
