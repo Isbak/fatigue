@@ -1,0 +1,45 @@
+name: Deploy Edge Version
+
+on:
+  push:
+    branches:
+      - main  
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    - name: Add WebAssembly Target
+      run: rustup target add wasm32-unknown-unknown
+
+    - name: Build WebAssembly Project
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --target wasm32-unknown-unknown --release
+
+    - name: Install wasm-pack
+      run: cargo install wasm-pack
+
+    - name: Pack WebAssembly
+      run: wasm-pack build
+
+    # Optionally, use wasm-pack or other tools to further process your WebAssembly module
+
+    - name: Deploy to Edge Branch
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: target/wasm32-unknown-unknown/release/fatigue.wasm  # Adjust this to the output directory of your WebAssembly build
+        destination_dir: .  # Root of the branch
+        publish_branch: edge  # The branch you want to deploy to
+        force_orphan: true  # Force the creation of a new orphan branch, losing history
