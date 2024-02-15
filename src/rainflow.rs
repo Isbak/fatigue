@@ -2,6 +2,7 @@
 use std::collections::VecDeque;
 
 /// Rainflow counting algorithm
+#[cfg(any(feature = "cli", feature = "wasm"))]
 pub fn rainflow(stress: &[f64]) -> (Vec<f64>, Vec<f64>) {
     let mut reversals = VecDeque::new();
     let mut outmean = Vec::new();

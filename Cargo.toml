@@ -3,9 +3,18 @@ name = "fatigue"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["cli"]
+cli = []
+wasm = ["wasm-bindgen"]
+
+[lib]
+crate-type = ["cdylib"]
 
 [dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_derive = "1.0"
+serde_json = "1.0"
 nalgebra = "0.32"
 regex = "1.5"
 rayon = "1.5"
@@ -14,4 +23,7 @@ approx = "0.5"
 toml = "0.8"
 evalexpr = "11.3"
 serde_yaml = "0.9"
+hashbrown = "0.14"
 getrandom = { version = "0.2.12", features = ["js"] }
+clap = { version = "4.4", features = ["derive"] }
+wasm-bindgen = { version = "0.2", optional = true }

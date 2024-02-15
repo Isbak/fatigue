@@ -1,24 +1,29 @@
-
 //! A module for the main application logic for the fatigue assessment tool
-use clap::{Arg, Command};
+#[cfg(any(feature = "cli", feature = "wasm"))]
 mod rainflow;
+#[cfg(feature = "cli")]
 mod app_logic;
+#[cfg(feature = "cli")]
 mod config;
+#[cfg(feature = "cli")]
 mod stress;
+#[cfg(feature = "cli")]
 mod interpolate;
+#[cfg(feature = "cli")]
 mod material;
+#[cfg(feature = "cli")]
 mod timeseries;
+#[cfg(feature = "cli")]
+use clap::{Arg, Command};
 
-/// Main function for the application with a CLI interface using clap for argument parsing and subcommands
-/// The main function should be used to parse the command line arguments and execute the application logic
-/// based on the provided arguments. Following arguments are supported:
-/// - `run`: The main argument to run the application followed by the path to the configuration file
-/// - `mode`: The execution mode, which can be either `cloud` or `local`
-/// 
-/// # Example
-/// ``` 
-/// fatigue --run test.yaml
-/// ```
+// Code specific to the CLI build
+#[cfg(feature = "cli")]
+mod cli {
+    // CLI-specific code here
+    // You can define your CLI interactions here and call them from the main function if the CLI feature is enabled
+}
+
+#[cfg(feature = "cli")]
 fn main() {
     let matches = Command::new("Fatigue")
         .author("Kristoffer Isbak Thomsen, kristoffer.isbak@gmail.com")
@@ -26,30 +31,38 @@ fn main() {
         .about("Safe and Fast Structural Fatigue Assessment as Code in Rust")
         .arg(
             Arg::new("run")
-                .short('r') // Corrected: Use a character without the dash
-                .long("run") // 'long' option names should not include dashes in the method call
-                .help("Run the program") // Corrected: Moved the description to .help()
-                .required(true) // Specify that this argument takes a value
+                .short('r')
+                .long("run")
+                .required(false)
+                .help("Run the program with the specified configuration file")
         )
         .arg(
             Arg::new("mode")
-                .short('m') // Corrected: Use a character without the dash
+                .short('m')
                 .long("mode")
-                .value_name("MODE")
+                .required(false)
                 .help("Sets the execution mode: cloud or local")
-                .required(true),
         )
         .arg(
             Arg::new("rainflow")
-                .short('a') // Corrected: Use a character without the dash
+                .short('a')
                 .long("rainflow")
-                .help("Perform rainflow counting on the input data, assumes input is a binary file containing a time series of float 32 in a specific format (e.g., .bin with ) and outputs the rainflow cycles to a file")
-                .required(true),
+                .required(false)
+                .help("Perform rainflow counting on the input data")
         )        
         .after_help("Longer explanation to appear after the options when \
                      displaying the help information from --help or -h")
         .get_matches();
+
+    // Match the commands and execute the appropriate functionality
     if let Some(r) = matches.get_one::<String>("run") {
-        let _ = app_logic::run(r);
-    }   
+        app_logic::run(r);
+    }
+
+    // Additional CLI logic would be here
+}
+
+#[cfg(not(feature = "cli"))]
+fn main() {
+    println!("This binary was not compiled with CLI support.");
 }

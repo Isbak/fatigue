@@ -24,11 +24,14 @@ jobs:
     - name: Add WebAssembly Target
       run: rustup target add wasm32-unknown-unknown
 
+    - name: Add Webassembly Target
+      run: rustup target add wasm32-wasi
+
     - name: Build WebAssembly Project
       uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --target wasm32-unknown-unknown --release
+        args: --feature wasm --target wasm32-wasi --release
 
     - name: Install wasm-pack
       run: cargo install wasm-pack
