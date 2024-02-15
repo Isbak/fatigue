@@ -31,7 +31,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --feature wasm --target wasm32-wasi --release
+        args: --features wasm --target wasm32-wasi --release
 
     - name: Install wasm-pack
       run: cargo install wasm-pack

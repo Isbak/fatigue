@@ -19,10 +19,10 @@ jobs:
     - name: Clean
       run: cargo clean
     - name: Build cli
-      run: cargo build --feature cli --verbose
+      run: cargo build --features cli --verbose
     - name: Run tests
       run: cargo test --verbose
     - name: Build wasm
-      run: cargo build --feature wasm --verbose
+      run: cargo build --features wasm --verbose
     - name: Run tests wasm
       run: cargo test --verbose
