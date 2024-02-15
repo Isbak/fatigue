@@ -45,7 +45,7 @@ jobs:
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.WASI_TOKEN }}
-        publish_dir: target/wasm32-wasi/release/fatigue.wasm  # Adjust this to the output directory of your WebAssembly build
+        publish_dir: target/wasm32-wasi/release/  # Adjust this to the output directory of your WebAssembly build
         destination_dir: .  # Root of the branch
         publish_branch: edge  # The branch you want to deploy to
         force_orphan: true  # Force the creation of a new orphan branch, losing history
