@@ -44,7 +44,7 @@ jobs:
     - name: Deploy to Edge Branch
       uses: peaceiris/actions-gh-pages@v3
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ secrets.WASI_TOKEN }}
         publish_dir: target/wasm32-unknown-unknown/release/fatigue.wasm  # Adjust this to the output directory of your WebAssembly build
         destination_dir: .  # Root of the branch
         publish_branch: edge  # The branch you want to deploy to
