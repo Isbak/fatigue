@@ -2,9 +2,9 @@
 extern crate nalgebra as na;
 use na::{Matrix3, SymmetricEigen, Vector6, Const};
 use std::fs::File;
-use std::io::{self, BufReader, prelude::*};
+use std::io::{self, BufReader, BufRead, Error};
 use std::path::Path;
-use crate::timeseries::{Interpolation, ParseConfig, Point}; // Ensure you import your Config and LoadCaseConfig
+
 
 /// A struct representing a stress tensor where the stress components are stored in a 3x3 matrix and a 6x1 vector
 #[derive(Debug)]
@@ -18,6 +18,31 @@ impl StressTensor {
     pub fn new(matrix: Matrix3<f64>) -> Self {
         let vector = Self::matrix_to_vector(&matrix);
         StressTensor { matrix, vector }
+    }
+
+    // Methods to access specific components
+    pub fn sxx(&self) -> f64 {
+        self.matrix[(0, 0)]
+    }
+
+    pub fn syy(&self) -> f64 {
+        self.matrix[(1, 1)]
+    }
+
+    pub fn szz(&self) -> f64 {
+        self.matrix[(2, 2)]
+    }
+
+    pub fn sxy(&self) -> f64 {
+        self.matrix[(0, 1)]
+    }
+
+    pub fn syz(&self) -> f64 {
+        self.matrix[(1, 2)]
+    }
+
+    pub fn szx(&self) -> f64 {
+        self.matrix[(0, 2)]
     }
 
     /// Converts a Matrix3 to a Vector6 following Voigt notation
@@ -79,21 +104,22 @@ impl StressTensor {
     }
 }
 
-// Read stress tensors from a file
-pub fn read_stress_tensors_from_file(inerp: &Interpolation, point: &Point) -> io::Result<Vec<(usize, StressTensor)>> {
-    let file_path = Path::new(&inerp.path).join(&point.file);
-    let file = File::open(file_path)?;
+// Function to read stress tensors from a file and return them as a vector of tuples
+// Each tuple contains a node number and a `StressTensor` instance
+pub fn read_stress_tensors_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(usize, StressTensor)>, Error> {
+    let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut tensors = Vec::new();
 
-    let lines = reader.lines().skip(inerp.parse_config.header);
-
-    for line in lines {
+    for line in reader.lines() {
         let line = line?;
-        let delimiter = &inerp.parse_config.delimiter.chars().next().unwrap_or(' ').to_string();
-        let values: Vec<f64> =  line.split(delimiter)
-            .filter_map(|s| s.trim().parse().ok())
-            .collect();
+        // Update this based on your file's format
+        let delimiter = ' '; // Assuming space or another character as delimiter
+        let values: Vec<f64> = line.split(delimiter)
+                                   .filter_map(|s| s.trim().parse::<f64>().ok())
+                                   .collect();
+
+        // Ensure there are enough values for a node number and a matrix
         if values.len() == 7 {
             let node_number = values[0] as usize;
             let matrix = Matrix3::new(
@@ -102,11 +128,10 @@ pub fn read_stress_tensors_from_file(inerp: &Interpolation, point: &Point) -> io
                 values[6], values[5], values[3],
             );
 
-            let tensor = StressTensor::new(matrix);
+            let tensor = StressTensor::new(matrix); // Assuming this constructor exists
             tensors.push((node_number, tensor));
         }
     }
-
     Ok(tensors)
 }
 
@@ -208,6 +233,10 @@ mod tests {
 
     #[test]
     fn test_read_stress_tensors_from_file() -> io::Result<()> {
+        use crate::timeseries::ParseConfig;
+        use std::path::PathBuf;
+        use crate::timeseries::{Interpolation, Point}; // Ensure you import your Config and LoadCaseConfig
+
         // Assuming LoadCaseConfig is structured something like this
         let interp = Interpolation {
             method: "LINEAR".to_string(), // Assuming interpolation method
@@ -218,9 +247,8 @@ mod tests {
             sensor: vec!["FX".into(), "FY".into(), "FZ".into()], // Sensors for interpolation
             points: vec![
                 Point {
-                    point: vec![0, 0, 0], // Example interpolation point, adjust as necessary
-                    file: "Fx.usf".into(), // File for interpolation point
-                    value: vec![0.0, 0.0, 0.0], // Assuming no specific value is provided; adjust if necessary
+                    file: Some("Fx.usf".to_string()), // File for interpolation point
+                    coordinates: vec![0.0, 0.0, 0.0], // Assuming no specific value is provided; adjust if necessary
                 },
             ],
             parse_config: ParseConfig {
@@ -229,17 +257,22 @@ mod tests {
             },
         };
         
-        // Call the function with the test config
-        let tensors = read_stress_tensors_from_file(&interp, &interp.points[0])?;
-
-        // Assert that tensors are read correctly
-        // The exact assertions will depend on the expected content of your test file
-        // For example, if you know the specific tensors that should be parsed, assert those
-        assert!(!tensors.is_empty(), "Tensors should not be empty");
-        // Example assertion: check for a specific tensor value or node number
-        // assert_eq!(tensors[0].0, expected_node_number);
-        // assert_eq!(tensors[0].1.matrix, expected_matrix);
-
+        for point in &interp.points {
+            // Check if `point.file` is `Some` and then construct the path
+            if let Some(ref file_name) = point.file {
+                let path = PathBuf::from(&interp.path).join(file_name); // Correctly constructs the path
+                let tensors = read_stress_tensors_from_file(&path)?; // Assuming the function accepts a `&Path`
+                        // Assert that tensors are read correctly
+                // The exact assertions will depend on the expected content of your test file
+                // For example, if you know the specific tensors that should be parsed, assert those
+                assert!(!tensors.is_empty(), "Tensors should not be empty");
+                // Example assertion: check for a specific tensor value or node number
+                // assert_eq!(tensors[0].0, expected_node_number);
+                // assert_eq!(tensors[0].1.matrix, expected_matrix);
+                // Do something with `tensors` here
+            }
+        }
+        
         Ok(())
     }    
 }

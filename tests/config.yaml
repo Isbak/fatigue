@@ -63,20 +63,16 @@ timeseries:
         delimiter: " " # Delimiter for the file
       scale: 0.001 # Scale factor for interpolation
       dimension: 3 # Dimension for interpolation
-      sensor: ["Fx", "Fy", "Fz"] # Sensor for interpolation point 1
+      sensor: ["Fx", "Fy", "Fz"] # Sensor for interpolation and the name of each coordinate in coordinates list
       points:
-      - point: [0, 0, 0] # Interpolation point 1
-        file: "FX0FY0FZ0.usf" # File for interpolation point 1
-        value: [1.0, 0.0, 0.0] # Value for interpolation point 2
-      - point: [1, 0, 0] # Interpolation point 2
-        file: "FX1FY0FZ0.usf" # File for interpolation point 2
-        value: [1.0, 0.0, 0.0] # Value for interpolation point 2
-      - point: [0, 1, 0] # Interpolation point 3
-        file: "FX0FY1FZ0.usf" # File for interpolation point 3
-        value: [0.0, 1.0, 0.0] # Value for interpolation point 3
-      - point: [0, 0, 1] # Interpolation point 4
-        file: "FX0FY0FZ1.usf" # File for interpolation point 4
-        value: [0.0, 0.0, 1.0] # Value for interpolation point 4
+      - file: "FX0FY0FZ0.usf" # File for interpolation point 1
+        coordinates: [1.0, 0.0, 0.0] # Value for interpolation point 2
+      - file: "FX1FY0FZ0.usf" # File for interpolation point 2
+        coordinates: [1.0, 0.0, 0.0] # Value for interpolation point 2
+      - file: "FX0FY1FZ0.usf" # File for interpolation point 3
+        coordinates: [0.0, 1.0, 0.0] # Value for interpolation point 3
+      - file: "FX0FY0FZ1.usf" # File for interpolation point 4
+        coordinates: [0.0, 0.0, 1.0] # Value for interpolation point 4
         
   loadcases:
   - loadcase: 

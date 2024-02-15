@@ -4,10 +4,16 @@ use std::collections::{HashMap, HashSet};
 use regex::Regex;
 use serde_json::from_str;
 use std::path::Path;
-use std::fs;
+use std::fs::{File, read_to_string};
+use std::io::{self, BufReader};
 use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, Value};
-
+use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 use crate::config::ValidationError;
+use crate::interpolate::{NDInterpolation, InterpolationStrategy, Linear, NearestNeighbor};
+use crate::stress::read_stress_tensors_from_file;
+
+const TOLERANCE: f64 = 1e-5; // Example tolerance level
 
 #[derive(Debug, Deserialize)]
 pub struct TimeSeries {
@@ -76,12 +82,31 @@ pub struct Interpolation {
     pub points: Vec<Point>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Point {
-    pub point: Vec<i32>,
-    pub file: String,
-    pub value: Vec<f64>,
+    pub file: Option<String>,
+    pub coordinates: Vec<f64>,
 }
+
+impl Eq for Point {}
+
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.coordinates.len() == other.coordinates.len() &&
+        self.coordinates.iter().zip(other.coordinates.iter()).all(|(a, b)| (a - b).abs() <= TOLERANCE)
+    }
+}
+
+impl Hash for Point {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for &coord in &self.coordinates {
+            // Discretize the coordinate by rounding it to the precision defined by TOLERANCE
+            let discretized = (coord / TOLERANCE).round() * TOLERANCE;
+            discretized.to_bits().hash(state); // Hash the bitwise representation of the discretized value
+        }
+    }
+}
+
 
 /// Interpolation configuration for a structural analysis application.
 impl Interpolation {
@@ -113,13 +138,13 @@ impl Interpolation {
             return Err(ValidationError::new("points must not be empty".into()));
         }
         for point in &self.points {
-            if point.file.trim().is_empty() {
+            if point.file.as_ref().unwrap().trim().is_empty() {
                 return Err(ValidationError::new("file must not be empty".into()));
             }
-            if point.value.len() != self.dimension {
-                return Err(ValidationError::new(&format!("When dimension is {}, the values per point must also have a length of 3. Found length: {}", self.dimension, point.value.len())));
+            if point.coordinates.len() != self.dimension {
+                return Err(ValidationError::new(&format!("When dimension is {}, the values per point must also have a length of 3. Found length: {}", self.dimension, point.coordinates.len())));
             }
-            if point.value.is_empty() {
+            if point.coordinates.is_empty() {
                 return Err(ValidationError::new("value must not be empty".into()));
             }
         }
@@ -193,7 +218,7 @@ impl TimeSeries {
     pub fn read_sensorfile(&self) -> Result<Vec<SensorFile>, Box<dyn std::error::Error>> {
         // Reads the sensor file, deserializes its content into `SensorFile` structs, 
         // and returns them for further processing.        
-        let content = fs::read_to_string(&self.sensorfile)?;
+        let content = read_to_string(&self.sensorfile)?;
         let sensors: Vec<SensorFile> = match from_str(&content) {
             Ok(sensors) => sensors,
             Err(e) => {
@@ -312,6 +337,76 @@ impl TimeSeries {
         }
     
         Ok(results)
+    }
+
+    fn interpolate(&self, /* interpolation parameters */) -> Result<(), String> {
+        for interp in self.interpolations.iter() {
+            let strategy: Box<dyn InterpolationStrategy> = match interp.method.as_str() {
+                "LINEAR" => Box::new(Linear /* Assuming you can instantiate Linear here */),
+                "NEAREST" => Box::new(NearestNeighbor /* Assuming you can instantiate NearestNeighbor here */),
+                _ => return Err("Unsupported interpolation method".to_string()),
+            };
+
+            // Initialize NDInterpolation with the chosen strategy
+            let mut interpolator_map: HashMap<usize, HashMap<String, NDInterpolation>> = HashMap::new();
+            if let Some(ref file_name) = interp.points[0].file {
+                let path = PathBuf::from(&interp.path).join(file_name);
+                let tensors = read_stress_tensors_from_file(&path).unwrap(); // Handle the Result using `?`
+                for tensor in tensors.iter() {
+                    // Retrieve or create the inner HashMap for the current tensor (node)
+                    let node_map = interpolator_map.entry(tensor.0).or_insert_with(HashMap::new);
+
+                    // Insert NDInterpolation instances for SXX, SYY, and SZZ
+                    node_map.insert("SXX".to_string(), NDInterpolation::new(&strategy));
+                    node_map.insert("SYY".to_string(), NDInterpolation::new(&strategy));
+                    node_map.insert("SZZ".to_string(), NDInterpolation::new(&strategy));
+                    node_map.insert("SXY".to_string(), NDInterpolation::new(&strategy));         
+                    node_map.insert("SYZ".to_string(), NDInterpolation::new(&strategy));         
+                    node_map.insert("SZX".to_string(), NDInterpolation::new(&strategy));                                       
+                }
+            }
+
+            for point in interp.points.iter() {
+                if let Some(ref file_name) = point.file {
+                    let path = PathBuf::from(&interp.path).join(file_name);
+                    let tensors = read_stress_tensors_from_file(&path).unwrap(); // Handle the Result using `?`
+                    for tensor in tensors.iter() {
+                        if let Some(inner_map) = interpolator_map.get_mut(&tensor.0) {
+                            // Define a list of component names and corresponding methods to call on the tensor to get their values.
+                            let components_and_methods = [
+                                ("SXX", tensor.1.sxx()),
+                                ("SYY", tensor.1.syy()),
+                                ("SZZ", tensor.1.szz()),
+                                ("SXY", tensor.1.sxy()),
+                                ("SYZ", tensor.1.syz()),
+                                ("SZX", tensor.1.szx()),
+                            ];
+                    
+                            for (component, value) in components_and_methods.iter() {
+                                if let Some(nd_interpolation) = inner_map.get_mut(*component) {
+                                    nd_interpolation.add_point(point.clone(), *value);
+                                } else {
+                                    // Handle the case where a specific stress component does not exist in the map for the current node.
+                                    // You might want to initialize it here or handle the error as appropriate for your application.
+                                }
+                            }
+                        } else {
+                            // If the node is not found in `interpolator_map`, handle the error.
+                            // This requires the enclosing function to return Result<_, _>.
+                            return Err(format!("Node {} not found in interpolator_map", tensor.0));
+                        }
+                    }
+                }
+            }
+
+            for lc in self.loadcases.iter(){
+                let sensor = self.read_sensorfile().unwrap();
+                let path = PathBuf::from(&self.path).join(&lc.file);
+                let file = File::open(path).unwrap();
+                let reader = BufReader::new(file);
+            }
+        }
+        Ok(())
     }
 
 }

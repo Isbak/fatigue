@@ -1,41 +1,16 @@
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
-use nalgebra::{DMatrix, DVector};
-
-const TOLERANCE: f64 = 1e-5; // Example tolerance level
-
-// Let's start with our n-dimensional point struct from earlier
-#[derive(Debug, Clone)]
-struct Point {
-    coordinates: Vec<f64>,
-}
-
-impl Eq for Point {}
-
-impl PartialEq for Point {
-    fn eq(&self, other: &Self) -> bool {
-        self.coordinates.len() == other.coordinates.len() &&
-        self.coordinates.iter().zip(other.coordinates.iter()).all(|(a, b)| (a - b).abs() <= TOLERANCE)
-    }
-}
-
-impl Hash for Point {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        for &coord in &self.coordinates {
-            // Discretize the coordinate by rounding it to the precision defined by TOLERANCE
-            let discretized = (coord / TOLERANCE).round() * TOLERANCE;
-            discretized.to_bits().hash(state); // Hash the bitwise representation of the discretized value
-        }
-    }
-}
+use nalgebra::{coordinates, DMatrix, DVector};
+use crate::timeseries::Point;
 
 // Define a trait for our interpolation strategies
-trait InterpolationStrategy {
+pub trait InterpolationStrategy {
+    // Corrected to include only two parameters: points and target
     fn interpolate(&self, points: &HashMap<Point, f64>, target: &Point) -> f64;
 }
 
+
 // Implement nearest-neighbor interpolation
-struct NearestNeighbor;
+pub struct NearestNeighbor;
 
 impl InterpolationStrategy for NearestNeighbor {
     fn interpolate(&self, points: &HashMap<Point, f64>, target: &Point) -> f64 {
@@ -59,9 +34,8 @@ impl InterpolationStrategy for NearestNeighbor {
     }
 }
 
-
 // Implement linear interpolation
-struct Linear;
+pub struct Linear;
 
 impl InterpolationStrategy for Linear {
     fn interpolate(&self, points: &HashMap<Point, f64>, target: &Point) -> f64 {
@@ -90,7 +64,7 @@ impl InterpolationStrategy for Linear {
     }
 }
 
-fn multivariate_linear_regression_svd(points: &[(Vec<f64>, f64)]) -> Vec<f64> {
+fn multivariate_linear_regression_svd(points: &[(Vec<f64>, f64)]) ->  Vec<f64> {
     // Assuming points is a slice of (features, target value) pairs
 
     let rows = points.len();
@@ -133,6 +107,8 @@ fn is_extrapolation(target: &Point, points: &HashMap<Point, f64>) -> bool {
 
     false // Target is within bounds in all dimensions
 }
+
+
 fn calculate_trend_vector(points: &HashMap<Point, f64>) -> Vec<f64> {
     if points.is_empty() {
         return vec![];
@@ -154,7 +130,7 @@ fn calculate_trend_vector(points: &HashMap<Point, f64>) -> Vec<f64> {
     }
 
     // Create a default point to use if no furthest point is found
-    let default_point = Point { coordinates: vec![0.0; dimensions] };
+    let default_point = Point { coordinates: vec![0.0; dimensions], file:None };
 
     // Find the furthest point from the centroid to define the trend direction
     let furthest_point = points.keys().max_by(|&a, &b| {
@@ -213,24 +189,28 @@ fn compute_interpolated_value(points: &HashMap<Point, f64>, weights: &HashMap<Po
 }
 
 // Our n-dimensional interpolation space, now with strategy!
-struct NDInterpolation {
+
+// NDInterpolation now includes a lifetime parameter `'a`
+pub struct NDInterpolation<'a> {
     points: HashMap<Point, f64>,
-    strategy: Box<dyn InterpolationStrategy>,
+    strategy: &'a Box<dyn InterpolationStrategy>,
 }
 
-impl NDInterpolation {
-    fn new(strategy: Box<dyn InterpolationStrategy>) -> Self {
+impl<'a> NDInterpolation<'a> {
+    // Accepts a reference to a Box<dyn InterpolationStrategy> with the same lifetime `'a`
+    pub fn new(strategy: &'a Box<dyn InterpolationStrategy>) -> Self {
         NDInterpolation {
             points: HashMap::new(),
             strategy,
         }
     }
 
-    fn add_point(&mut self, point: Point, value: f64) {
+    pub fn add_point(&mut self, point: Point, value: f64) {
         self.points.insert(point, value);
     }
 
-    fn interpolate(&self, target: &Point) -> f64 {
+    // Delegates to the strategy's interpolate method
+    pub fn interpolate(&self, target: &Point) -> f64 {
         self.strategy.interpolate(&self.points, target)
     }
 }
@@ -242,19 +222,19 @@ mod tests {
     #[test]
     fn test_extrapolation() {
         // Set up an interpolator with a linear strategy
-        let strategy = Box::new(Linear); // Assuming Linear is defined to handle extrapolation
-        let mut interpolator = NDInterpolation::new(strategy);
+        let strategy: Box<dyn InterpolationStrategy> = Box::new(Linear);
+        let mut interpolator = NDInterpolation::new(&strategy);
 
         // Add some sample points for a simple linear relation y = 2x
         // For example, let's define points along this line from x=1 to x=5
-        interpolator.add_point(Point { coordinates: vec![1.0] }, 2.0);
-        interpolator.add_point(Point { coordinates: vec![2.0] }, 4.0);
-        interpolator.add_point(Point { coordinates: vec![3.0] }, 6.0);
-        interpolator.add_point(Point { coordinates: vec![4.0] }, 8.0);
-        interpolator.add_point(Point { coordinates: vec![5.0] }, 10.0);
+        interpolator.add_point(Point { coordinates: vec![1.0] , file:None}, 2.0);
+        interpolator.add_point(Point { coordinates: vec![2.0] , file:None}, 4.0);
+        interpolator.add_point(Point { coordinates: vec![3.0] , file:None}, 6.0);
+        interpolator.add_point(Point { coordinates: vec![4.0] , file:None}, 8.0);
+        interpolator.add_point(Point { coordinates: vec![5.0] , file:None}, 10.0);
 
         // Define a target point for extrapolation (beyond the range of known points)
-        let target_point = Point { coordinates: vec![6.0] };
+        let target_point = Point { coordinates: vec![6.0] , file:None};
 
         // Perform the interpolation (in this case, extrapolation)
         let interpolated_value = interpolator.interpolate(&target_point);
@@ -275,17 +255,17 @@ mod tests {
     #[test]
     fn test_linear_interpolation() {
         // Initialize the interpolator with the Linear strategy
-        let strategy = Box::new(Linear);
-        let mut interpolator = NDInterpolation::new(strategy);
+        let strategy: Box<dyn InterpolationStrategy> = Box::new(Linear);
+        let mut interpolator = NDInterpolation::new(&strategy);
 
         // Add sample points that define a simple linear relationship
         // For simplicity, let's use a direct proportionality with a slope of 1 (y = x)
-        interpolator.add_point(Point { coordinates: vec![1.0] }, 1.0);
-        interpolator.add_point(Point { coordinates: vec![3.0] }, 3.0);
+        interpolator.add_point(Point { coordinates: vec![1.0] , file:None}, 1.0);
+        interpolator.add_point(Point { coordinates: vec![3.0] , file:None}, 3.0);
 
         // Define a target point that lies between the known points (e.g., x=2)
         // Based on our linear relationship, we expect the interpolated value at x=2 to be y=2
-        let target_point = Point { coordinates: vec![2.0] };
+        let target_point = Point { coordinates: vec![2.0] , file:None};
 
         // Perform the interpolation
         let interpolated_value = interpolator.interpolate(&target_point);
@@ -305,17 +285,17 @@ mod tests {
     #[test]
     fn test_4d_linear_interpolation() {
         // Initialize the interpolator with the Linear strategy
-        let strategy = Box::new(Linear);
-        let mut interpolator = NDInterpolation::new(strategy);
+        let strategy: Box<dyn InterpolationStrategy> = Box::new(Linear);
+        let mut interpolator = NDInterpolation::new(&strategy);
 
         // Add sample points in a 4-dimensional space
         // For simplicity, let's define the value at each point as the sum of its coordinates
-        interpolator.add_point(Point { coordinates: vec![1.0, 1.0, 1.0, 1.0] }, 4.0); // Sum = 4
-        interpolator.add_point(Point { coordinates: vec![2.0, 2.0, 2.0, 2.0] }, 8.0); // Sum = 8
+        interpolator.add_point(Point { coordinates: vec![1.0, 1.0, 1.0, 1.0] , file:None}, 4.0); // Sum = 4
+        interpolator.add_point(Point { coordinates: vec![2.0, 2.0, 2.0, 2.0] , file:None}, 8.0); // Sum = 8
 
         // Define a target point that lies exactly halfway between the known points
         // Expected value at the target is the average of the values at known points
-        let target_point = Point { coordinates: vec![1.5, 1.5, 1.5, 1.5] }; // Expected sum = 6
+        let target_point = Point { coordinates: vec![1.5, 1.5, 1.5, 1.5] , file:None}; // Expected sum = 6
 
         // Perform the interpolation
         let interpolated_value = interpolator.interpolate(&target_point);
