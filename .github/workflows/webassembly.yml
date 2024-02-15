@@ -18,6 +18,9 @@ jobs:
         toolchain: stable
         override: true
 
+    - name: Add libssl
+      run: sudo apt-get install libssl-dev
+
     - name: Add WebAssembly Target
       run: rustup target add wasm32-unknown-unknown
 
