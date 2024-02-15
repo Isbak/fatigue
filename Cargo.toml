@@ -19,3 +19,6 @@ clap = { version = "4.4", features = ["derive"] }
 evalexpr = "11.3"
 serde_yaml = "0.9"
 getrandom = { version = "0.2.12", features = ["js"] }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
