@@ -30,10 +30,40 @@ The implementation focuses on modern fatigue analysis methods and algorithms, en
 ```sh
 cd fatigue
 ```
-
 3. Compile the project
 ```sh
 cargo build --release
+```
+
+### Setting Up Rust for WebAssembly
+Embark on the journey of WebAssembly development with Rust by following these steps to set up your environment:
+
+Install Rust: If Rust isn't already your trusty sidekick, install it via [rustup](https://rustup.rs/), ensuring you have the latest stable version.
+
+Add the WebAssembly Target: Unleash Rust's full potential by adding WebAssembly as a compilation target:
+
+```sh
+rustup target add wasm32-unknown-unknown
+rustup target add wasmi
+```
+Install wasm-pack: To seamlessly pack your Rust code into WebAssembly, wasm-pack is the tool for the job, facilitating both compilation and packaging.
+
+Optional Tools:
+
+wasm-bindgen: For interacting between WebAssembly modules and JavaScript.
+cargo-generate: To kickstart a Rust-WebAssembly project with a template.
+web-sys: A crate providing bindings for Web APIs.
+Compile Your Project: Navigate to your project directory and run:
+
+```sh
+wasm-pack build
+```
+Integration into Web Projects: Use the generated .wasm file along with the wasm-bindgen or web-sys crates to integrate Rust-powered functionality directly into your web applications.
+
+This setup primes your Rust environment for diving into the vast sea of WebAssembly, ensuring your projects can ride the waves of the web with the power and safety of Rust.
+
+```sh
+cargo build --features wasm --target wasm32-wasi --release
 ```
 
 ## Usage
