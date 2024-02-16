@@ -5,7 +5,7 @@ use regex::Regex;
 use serde_json::from_str;
 use std::path::Path;
 use std::fs::{File, read_to_string};
-use std::io::{self, BufReader};
+use std::io::BufReader;
 use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, Value};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
@@ -86,6 +86,12 @@ pub struct Interpolation {
 pub struct Point {
     pub file: Option<String>,
     pub coordinates: Vec<f64>,
+}
+
+impl Point {
+    pub fn new(file: Option<String>, coordinates: Vec<f64>) -> Self {
+        Point { file, coordinates }
+    }
 }
 
 impl Eq for Point {}
@@ -400,10 +406,10 @@ impl TimeSeries {
             }
 
             for lc in self.loadcases.iter(){
-                let sensor = self.read_sensorfile().unwrap();
+                let _sensor = self.read_sensorfile().unwrap();
                 let path = PathBuf::from(&self.path).join(&lc.file);
                 let file = File::open(path).unwrap();
-                let reader = BufReader::new(file);
+                let _reader = BufReader::new(file);
             }
         }
         Ok(())

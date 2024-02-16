@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use nalgebra::{coordinates, DMatrix, DVector};
+use nalgebra::{DMatrix, DVector};
 use crate::timeseries::Point;
 
 // Define a trait for our interpolation strategies
 pub trait InterpolationStrategy {
     // Corrected to include only two parameters: points and target
-    fn interpolate(&self, points: &HashMap<Point, f64>, target: &Point) -> f64;
+    fn interpolate(&self, points: &HashMap<Point, f64>, target: &Point) -> Result<f64, String>;
 }
 
 
@@ -13,7 +13,7 @@ pub trait InterpolationStrategy {
 pub struct NearestNeighbor;
 
 impl InterpolationStrategy for NearestNeighbor {
-    fn interpolate(&self, points: &HashMap<Point, f64>, target: &Point) -> f64 {
+    fn interpolate(&self, points: &HashMap<Point, f64>, target: &Point) -> Result<f64, String> {
         points.iter()
             .map(|(point, &value)| {
                 let distance = point.coordinates.iter()
@@ -23,49 +23,52 @@ impl InterpolationStrategy for NearestNeighbor {
                     .sqrt();
                 (distance, value)
             })
-            // We use `min_by` to find the point with the smallest distance.
-            // `partial_cmp` is used for comparison, which handles floating point numbers.
-            .min_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+            // Handle floating point comparison carefully
+            .min_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
             // We're interested in the value of the nearest point, not its distance
             .map(|(_, value)| value)
-            // If, for some reason, we have no points (which shouldn't happen if used correctly),
-            // we return a default value. This is a defensive programming practice.
-            .unwrap_or(0.0)
+            // Convert to Result; provide an error message if no points are found
+            .ok_or_else(|| "No points available for interpolation.".to_string())
     }
 }
+
 
 // Implement linear interpolation
 pub struct Linear;
 
 impl InterpolationStrategy for Linear {
-    fn interpolate(&self, points: &HashMap<Point, f64>, target: &Point) -> f64 {
-        // Convert HashMap to the expected format for regression
+    fn interpolate(&self, points: &HashMap<Point, f64>, target: &Point) -> Result<f64, String> {
+        // Ensure there are enough points for SVD-based interpolation/extrapolation
+        if points.len() < 2 {
+            return Err("Not enough points for interpolation".to_string());
+        }
+
+        // Convert points to a format suitable for SVD and regression
         let points_vec: Vec<(Vec<f64>, f64)> = points.iter()
             .map(|(point, &value)| (point.coordinates.clone(), value))
             .collect();
 
-        // Determine if extrapolation is needed
-        if is_extrapolation(target, points) {
-            // Perform multivariate linear regression using SVD
-            let coefficients = multivariate_linear_regression_svd(&points_vec);
+        // Perform multivariate linear regression using SVD
+        let coefficients = multivariate_linear_regression_svd(&points_vec)
+            .map_err(|e| format!("Failed to perform linear regression: {}", e))?;
 
-            // The first coefficient is the intercept; the rest are slopes for each dimension
-            // Calculate the extrapolated value using the regression model
-            let mut extrapolated_value = coefficients[0]; // start with intercept
-            for (i, coord) in target.coordinates.iter().enumerate() {
-                extrapolated_value += coefficients[i + 1] * coord; // add contribution of each dimension
+        // Calculate the interpolated or extrapolated value using the regression model
+        // Start with the intercept (the first coefficient)
+        let mut interpolated_value = coefficients[0];
+        // Add the contribution of each dimension
+        for (i, coord) in target.coordinates.iter().enumerate() {
+            if i + 1 < coefficients.len() {
+                interpolated_value += coefficients[i + 1] * coord;
             }
-            return extrapolated_value;
         }
-
-        // If not extrapolating, proceed with original interpolation logic
-        let weights = calculate_interpolation_weights(target, points);
-        compute_interpolated_value( points, &weights)
+        Ok(interpolated_value)
     }
 }
 
-fn multivariate_linear_regression_svd(points: &[(Vec<f64>, f64)]) ->  Vec<f64> {
-    // Assuming points is a slice of (features, target value) pairs
+fn multivariate_linear_regression_svd(points: &[(Vec<f64>, f64)]) -> Result<Vec<f64>, String> {
+    if points.is_empty() {
+        return Err("No points provided for linear regression.".to_string());
+    }
 
     let rows = points.len();
     let cols = points[0].0.len() + 1; // Number of features + 1 for the intercept
@@ -74,8 +77,8 @@ fn multivariate_linear_regression_svd(points: &[(Vec<f64>, f64)]) ->  Vec<f64> {
 
     for (features, target) in points {
         let mut row = vec![1.0]; // Intercept term
-        row.extend_from_slice(&features);
-        x_data.extend_from_slice(&row);
+        row.extend(features.iter());
+        x_data.extend(row);
         y_data.push(*target);
     }
 
@@ -85,110 +88,11 @@ fn multivariate_linear_regression_svd(points: &[(Vec<f64>, f64)]) ->  Vec<f64> {
 
     // Perform SVD
     let svd = x.svd(true, true);
-    let solution = svd.solve(&y, 1e-12).expect("Solving linear system failed");
-
-    solution.iter().cloned().collect()
-}
-
-fn is_extrapolation(target: &Point, points: &HashMap<Point, f64>) -> bool {
-    // Assuming all points, including the target, have the same number of dimensions
-    let dimensions = target.coordinates.len();
-
-    for dim in 0..dimensions {
-        let (min_dim, max_dim) = points.keys().fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), point| {
-            let coord = point.coordinates[dim];
-            (min.min(coord), max.max(coord))
-        });
-
-        if target.coordinates[dim] < min_dim || target.coordinates[dim] > max_dim {
-            return true; // Target is outside the bounds in at least one dimension
-        }
+    match svd.solve(&y, 1e-12) {
+        Ok(solution) => Ok(solution.iter().cloned().collect()),
+        Err(_) => Err("Failed to solve the linear system using SVD.".to_string()),
     }
-
-    false // Target is within bounds in all dimensions
 }
-
-
-fn calculate_trend_vector(points: &HashMap<Point, f64>) -> Vec<f64> {
-    if points.is_empty() {
-        return vec![];
-    }
-
-    let dimensions = points.keys().next().unwrap().coordinates.len();
-    let mut centroid = vec![0.0; dimensions];
-    let mut count = 0.0;
-
-    // Calculate the centroid of the points
-    for point in points.keys() {
-        for (i, &coord) in point.coordinates.iter().enumerate() {
-            centroid[i] += coord;
-        }
-        count += 1.0;
-    }
-    for i in 0..dimensions {
-        centroid[i] /= count;
-    }
-
-    // Create a default point to use if no furthest point is found
-    let default_point = Point { coordinates: vec![0.0; dimensions], file:None };
-
-    // Find the furthest point from the centroid to define the trend direction
-    let furthest_point = points.keys().max_by(|&a, &b| {
-        let distance_a = a.coordinates.iter().zip(&centroid)
-            .map(|(a_coord, &c_coord)| (a_coord - c_coord).powi(2))
-            .sum::<f64>();
-        let distance_b = b.coordinates.iter().zip(&centroid)
-            .map(|(b_coord, &c_coord)| (b_coord - c_coord).powi(2))
-            .sum::<f64>();
-        distance_a.partial_cmp(&distance_b).unwrap_or(std::cmp::Ordering::Equal)
-    }).unwrap_or(&default_point); // Use the persistent default_point here
-
-    // Calculate the trend vector as the difference between the furthest point and the centroid
-    let trend_vector = furthest_point.coordinates.iter().zip(&centroid)
-        .map(|(point_coord, &centroid_coord)| point_coord - centroid_coord)
-        .collect::<Vec<f64>>();
-
-    trend_vector
-}
-
-
-fn calculate_interpolation_weights(target: &Point, points: &HashMap<Point, f64>) -> HashMap<Point, f64> {
-    let mut weights = HashMap::new();
-    let trend_vector = calculate_trend_vector(points);
-    let total_weight: f64 = points.iter().map(|(point, _)| {
-        let distance = point.coordinates.iter().zip(&target.coordinates)
-            .map(|(a, b)| (a - b).powi(2))
-            .sum::<f64>()
-            .sqrt();
-        
-        let alignment = point.coordinates.iter().zip(&trend_vector)
-            .map(|(a, b)| a * b)
-            .sum::<f64>();
-
-        // Consider revising this to balance the influence of distance and alignment
-        let weight = if distance > 0.0 { (1.0 / distance) * alignment.abs() } else { 0.0 };
-        weights.insert(point.clone(), weight);
-        weight
-    }).sum();
-
-    // Adjust normalization to account for total_weight possibly being 0 or very small
-    if total_weight > 0.0 {
-        for weight in weights.values_mut() {
-            *weight /= total_weight;
-        }
-    }
-
-    weights
-}
-
-
-fn compute_interpolated_value(points: &HashMap<Point, f64>, weights: &HashMap<Point, f64>) -> f64 {
-    points.iter().fold(0.0, |acc, (point, &value)| {
-        acc + weights.get(point).unwrap_or(&0.0) * value
-    })
-}
-
-// Our n-dimensional interpolation space, now with strategy!
 
 // NDInterpolation now includes a lifetime parameter `'a`
 pub struct NDInterpolation<'a> {
@@ -210,7 +114,7 @@ impl<'a> NDInterpolation<'a> {
     }
 
     // Delegates to the strategy's interpolate method
-    pub fn interpolate(&self, target: &Point) -> f64 {
+    pub fn interpolate(&self, target: &Point) -> Result<f64, String> {
         self.strategy.interpolate(&self.points, target)
     }
 }
@@ -237,7 +141,7 @@ mod tests {
         let target_point = Point { coordinates: vec![6.0] , file:None};
 
         // Perform the interpolation (in this case, extrapolation)
-        let interpolated_value = interpolator.interpolate(&target_point);
+        let interpolated_value = interpolator.interpolate(&target_point).unwrap();
 
         // Assert the expected value based on the linear relation y = 2x
         // Since we're extrapolating for x=6, we expect y=12 according to our linear relation
@@ -268,10 +172,10 @@ mod tests {
         let target_point = Point { coordinates: vec![2.0] , file:None};
 
         // Perform the interpolation
-        let interpolated_value = interpolator.interpolate(&target_point);
+        let interpolated_value = interpolator.interpolate(&target_point).unwrap();
 
         // Assert that the interpolated value matches the expected value (y=2)
-        let expected_value = 2.5; // Expected value based on the linear relationship y = x
+        let expected_value = 2.0; // Expected value based on the linear relationship y = x
         let tolerance = 1e-5; // Define a small tolerance for floating-point comparison
 
         assert!(
@@ -298,10 +202,10 @@ mod tests {
         let target_point = Point { coordinates: vec![1.5, 1.5, 1.5, 1.5] , file:None}; // Expected sum = 6
 
         // Perform the interpolation
-        let interpolated_value = interpolator.interpolate(&target_point);
+        let interpolated_value = interpolator.interpolate(&target_point).unwrap();
 
         // Assert that the interpolated value matches the expected value
-        let expected_value = 6.6666666666; // Expected value based on our simple linear relationship
+        let expected_value = 6.0; // Expected value based on our simple linear relationship
         let tolerance = 1e-5; // Define a small tolerance for floating-point comparison
 
         assert!(
@@ -311,5 +215,42 @@ mod tests {
             expected_value
         );
     }
-
+    #[test]
+    fn test_non_linear_relationship() {
+        let strategy: Box<dyn InterpolationStrategy> = Box::new(Linear);
+        let mut interpolator = NDInterpolation::new(&strategy);
+    
+        // Define points that form a quadratic relationship, y = x^2
+        interpolator.add_point(Point { coordinates: vec![1.0], file: None }, 1.0);
+        interpolator.add_point(Point { coordinates: vec![2.0], file: None }, 4.0);
+        interpolator.add_point(Point { coordinates: vec![3.0], file: None }, 9.0);
+    
+        // Attempt to interpolate at a point within the dataset range
+        let target_point = Point { coordinates: vec![2.5], file: None };
+        let interpolated_value = interpolator.interpolate(&target_point).unwrap();
+    
+        // Calculate the expected value based on the quadratic relationship (not linear!)
+        let expected_value = 2.5 * 2.5;
+    
+        let tolerance = 1e-5;
+        assert!(
+            (interpolated_value - expected_value).abs() > tolerance,
+            "Interpolation inaccurately predicts non-linear relationships."
+        );        
+    }
+    #[test]
+    fn test_insufficient_points() {
+        let strategy: Box<dyn InterpolationStrategy> = Box::new(Linear);
+        let mut interpolator = NDInterpolation::new(&strategy);
+    
+        // Add a single point, insufficient for linear interpolation
+        interpolator.add_point(Point { coordinates: vec![1.0], file: None }, 1.0);
+    
+        // Attempt to interpolate
+        let target_point = Point { coordinates: vec![2.0], file: None };
+        let result = interpolator.interpolate(&target_point);
+    
+        assert!(result.is_err(), "Interpolation should fail with insufficient points.");
+    }    
+    
 }

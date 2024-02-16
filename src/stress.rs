@@ -2,7 +2,7 @@
 extern crate nalgebra as na;
 use na::{Matrix3, SymmetricEigen, Vector6, Const};
 use std::fs::File;
-use std::io::{self, BufReader, BufRead, Error};
+use std::io::{BufReader, BufRead, Error};
 use std::path::Path;
 
 
@@ -58,13 +58,13 @@ impl StressTensor {
     }
 
     /// Converts the internal Vector6 back to a Matrix3
-    fn vector_to_matrix(vector: &Vector6<f64>) -> Matrix3<f64> {
+    /* fn vector_to_matrix(vector: &Vector6<f64>) -> Matrix3<f64> {
         Matrix3::new(
             vector[0], vector[3], vector[5], // Row 1: σxx, τxy, τzx
             vector[3], vector[1], vector[4], // Row 2: τxy, σyy, τyz
             vector[5], vector[4], vector[2], // Row 3: τzx, τyz, σzz
         )
-    }
+    }*/
 
     // method to update the stress tensor
     pub fn update_stress(&mut self, matrix: Matrix3<f64>) {
@@ -141,15 +141,8 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
     use na::Vector3;
-
-    #[test]
-    fn test_vector_to_matrix_conversion() {
-        let vector = Vector6::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
-        let expected_matrix = Matrix3::new(1.0, 4.0, 6.0, 4.0, 2.0, 5.0, 6.0, 5.0, 3.0);
-        let matrix = StressTensor::vector_to_matrix(&vector);
-        assert_eq!(matrix, expected_matrix);
-    }
-
+    use std::io;
+    
     #[test]
     fn test_update_stress() {
         let initial_matrix = Matrix3::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);

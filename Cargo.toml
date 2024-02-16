@@ -9,7 +9,8 @@ cli = []
 wasm = ["wasm-bindgen"]
 
 [lib]
-crate-type = ["cdylib"]
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -27,3 +28,14 @@ hashbrown = "0.14"
 getrandom = { version = "0.2.12", features = ["js"] }
 clap = { version = "4.4", features = ["derive"] }
 wasm-bindgen = { version = "0.2", optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "benchmark"
+harness = false # This allows you to use your own test harness, such as Criterion
+
+[[bin]]
+name = "fatigue"  # The name of your binary
+path = "src/main.rs"  # The new path to your crate root

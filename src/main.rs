@@ -1,27 +1,22 @@
 //! A module for the main application logic for the fatigue assessment tool
 #[cfg(any(feature = "cli", feature = "wasm"))]
-mod rainflow;
+pub mod rainflow;
 #[cfg(feature = "cli")]
 mod app_logic;
 #[cfg(feature = "cli")]
-mod config;
+pub mod config;
 #[cfg(feature = "cli")]
-mod stress;
+pub mod stress;
+#[cfg(any(feature = "cli", feature = "wasm"))]
+pub mod interpolate;
+pub use interpolate::{InterpolationStrategy, Linear, NDInterpolation};
+
 #[cfg(feature = "cli")]
-mod interpolate;
+pub mod material;
 #[cfg(feature = "cli")]
-mod material;
-#[cfg(feature = "cli")]
-mod timeseries;
+pub mod timeseries;
 #[cfg(feature = "cli")]
 use clap::{Arg, Command};
-
-// Code specific to the CLI build
-#[cfg(feature = "cli")]
-mod cli {
-    // CLI-specific code here
-    // You can define your CLI interactions here and call them from the main function if the CLI feature is enabled
-}
 
 #[cfg(feature = "cli")]
 fn main() {
@@ -56,13 +51,12 @@ fn main() {
 
     // Match the commands and execute the appropriate functionality
     if let Some(r) = matches.get_one::<String>("run") {
-        app_logic::run(r);
+        if let Err(e) = app_logic::run(r) {
+            println!("Error running app logic: {:?}", e);
+            // You could return an error here, or take other corrective actions as needed.
+        }
     }
 
     // Additional CLI logic would be here
 }
 
-#[cfg(not(feature = "cli"))]
-fn main() {
-    println!("This binary was not compiled with CLI support.");
-}

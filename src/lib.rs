@@ -1,9 +1,21 @@
-// src/lib.rs
+#[cfg(any(feature = "cli", feature = "wasm"))]
+pub mod rainflow;
+#[cfg(any(feature = "cli", feature = "wasm"))]
+pub mod interpolate;
+pub use interpolate::{InterpolationStrategy, Linear, NDInterpolation};
+#[cfg(feature = "cli")]
+mod app_logic;
+#[cfg(feature = "cli")]
+pub mod config;
+#[cfg(feature = "cli")]
+pub mod stress;
+#[cfg(feature = "cli")]
+pub mod material;
+#[cfg(feature = "cli")]
+pub mod timeseries;
 
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
-#[cfg(any(feature = "cli", feature = "wasm"))]
-mod rainflow;
 
 // When the "wasm" feature is enabled, use wasm_bindgen to expose functions to the host environment.
 #[cfg(feature = "wasm")]
