@@ -1,0 +1,34 @@
+name: Rust Security Audit
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  security_audit:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        default: true
+
+    - name: Install cargo-audit
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-audit
+
+    - name: Run cargo-audit
+      uses: actions-rs/cargo@v1
+      with:
+        command: audit
+        args: --deny warnings
