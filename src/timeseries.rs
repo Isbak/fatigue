@@ -443,7 +443,7 @@ impl Expressions {
     /// # Examples
     ///
     /// ```
-    /// use your_crate_name::Expressions;
+    /// use fatigue::timeseries::Expressions;
     ///
     /// let expressions = Expressions {
     ///     order: vec![String::from("expression1"), String::from("expression2")],

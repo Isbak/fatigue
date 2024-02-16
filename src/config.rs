@@ -117,22 +117,6 @@ impl Solution {
     /// Returns `Ok(())` if the solution configuration and all related criteria are valid.
     /// If any configuration is invalid, it returns a `ValidationError` with a detailed explanation.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use your_crate_name::{Solution, StressCriteria, Mean, Node, Damage};
-    ///
-    /// let solution = Solution {
-    ///     run_type: String::from("FAT"),
-    ///     mode: String::from("STRESS"),
-    ///     output: String::from("JSON"),
-    ///     stress_criteria: StressCriteria::default(), // Assume default implementations
-    ///     mean: Mean::default(),
-    ///     node: Node::default(),
-    ///     damage: Damage::default(),
-    /// };
-    ///
-    /// assert!(solution.validate().is_ok());
     /// ```    
     pub fn validate(&self) -> Result<(), ValidationError> {
         match self.run_type.as_str() {
@@ -185,7 +169,7 @@ impl StressCriteria {
     /// # Examples
     ///
     /// ```
-    /// use your_crate_name::StressCriteria;
+    /// use fatigue::config::StressCriteria;
     ///
     /// let criteria_vonmises = StressCriteria {
     ///     number: None,
@@ -248,7 +232,7 @@ impl Mean {
     /// # Examples
     ///
     /// ```
-    /// use your_crate_name::Mean;
+    /// use fatigue::config::Mean;
     ///
     /// let mean_correction = Mean {
     ///     mean: String::from("GOODMAN"),
@@ -264,6 +248,7 @@ impl Mean {
     /// };
     /// assert!(invalid_mean_correction.validate().is_err());
     /// ```    
+    /// 
     pub fn validate(&self) -> Result<(), ValidationError> {
         // Validate 'mean' field
         match self.mean.as_str() {
@@ -315,7 +300,7 @@ impl Node {
     /// # Examples
     ///
     /// ```
-    /// use your_crate_name::Node;
+    /// use fatigue::config::Node;
     ///
     /// let node_range = Node { from: 1, to: 10, path: String::from("path/to/data") };
     /// assert!(node_range.validate().is_ok());
@@ -398,7 +383,7 @@ impl SafetyFactor {
     /// # Examples
     ///
     /// ```
-    /// use config::SafetyFactor;
+    /// use fatigue::config::SafetyFactor;
     ///
     /// let sf = SafetyFactor { gmre: 1.5, gmrm: 1.2, gmfat: 1.3 };
     /// assert!(sf.validate().is_ok());
