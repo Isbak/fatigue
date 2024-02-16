@@ -1,5 +1,7 @@
 # Safe and Fast Structural Fatigue Assessment as Code in Rust
 
+[![Rust Security Audit](https://github.com/Isbak/fatigue/actions/workflows/security_audit.yml/badge.svg)](https://github.com/Isbak/fatigue/actions/workflows/security_audit.yml)
+
 ## Overview
 
 This project aims to provide a reliable and efficient tool for conducting structural fatigue assessments, leveraging the Rust programming language's safety and performance features. Designed with the engineering community in mind, it offers a code-based approach to evaluate structural integrity under cyclic loading conditions, crucial for various industries including aerospace, automotive, construction, and more.
