@@ -1,8 +1,6 @@
 # Safe and Fast Structural Fatigue Assessment as Code in Rust
 
-[![Rust Security Audit](https://github.com/Isbak/fatigue/actions/workflows/security_audit.yml/badge.svg)](https://github.com/Isbak/fatigue/actions/workflows/security_audit.yml)
-
-[![Deploy Edge Version](https://github.com/Isbak/fatigue/actions/workflows/webassembly.yml/badge.svg)](https://github.com/Isbak/fatigue/actions/workflows/webassembly.yml)
+[![Rust Security Audit](https://github.com/Isbak/fatigue/actions/workflows/security_audit.yml/badge.svg)](https://github.com/Isbak/fatigue/actions/workflows/security_audit.yml) [![Deploy Edge Version](https://github.com/Isbak/fatigue/actions/workflows/webassembly.yml/badge.svg)](https://github.com/Isbak/fatigue/actions/workflows/webassembly.yml)
 
 ## Overview
 
