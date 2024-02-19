@@ -10,11 +10,16 @@ The implementation focuses on modern fatigue analysis methods and algorithms, en
 
 ## Features
 
-- **Safety and Reliability**: Built in Rust to minimize common programming errors and ensure robust execution.
-- **High Performance**: Optimized for speed, facilitating rapid assessments of complex structural models.
-- **Modular Design**: Easy integration into existing engineering workflows or as part of a larger analysis pipeline.
-- **Open Source**: Encouraging collaboration and contributions from the engineering and scientific community.
+- **Safety and Reliability**: Our toolkit is constructed with Rust at its core, a language designed with safety in mind. Rust's strict compilation checks eliminate common programming errors such as null pointer dereferences and data races, ensuring that our toolkit operates with unmatched reliability. This foundational safety allows engineers to focus on innovation and design, confident in the robustness of the underlying computational engine.
 
+- **High Performance**: Engineered for efficiency, our toolkit is optimized to deliver rapid assessments of even the most complex structural models. By leveraging Rust’s performance characteristics, such as zero-cost abstractions and efficient concurrency management, it provides speed without sacrificing accuracy. This optimization ensures that our users can perform exhaustive analyses and simulations in reduced timeframes, accelerating the engineering process from concept to validation.
+
+- **Modular Design**: The toolkit's architecture embodies flexibility, designed to fit seamlessly into a variety of engineering workflows. Whether it's a standalone tool for specific analyses or a component of a broader engineering software ecosystem, its modular design facilitates easy integration. This adaptability allows it to evolve alongside your projects, supporting a wide range of applications from preliminary design assessments to detailed structural health monitoring.
+  
+- **WebAssembly Support**: By supporting WebAssembly, we enable the toolkit to run in web browsers across different platforms, maintaining high performance and security standards. This feature allows for the development of interactive, web-based structural analysis applications, broadening the toolkit's accessibility and usability.
+  
+- **Edge Computing Compatibility**: Enabled by WebAssembly, our toolkit excels at edge computing, allowing for real-time structural analysis close to data sources. This feature is crucial for rapid decision-making in scenarios like in-field evaluations, IoT monitoring of structural health, and managing large-scale construction networks. WebAssembly's efficiency ensures low latency and reduced bandwidth usage, enabling fast and effective analysis anywhere. This makes our toolkit a versatile and responsive solution for modern engineering challenges.
+  
 ## Getting Started
 
 ### Prerequisites
