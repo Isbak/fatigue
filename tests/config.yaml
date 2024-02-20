@@ -57,7 +57,7 @@ timeseries:
   interpolations:
     - name: "StressTimeseries" # Sensor type
       method: "LINEAR" # Interpolation method
-      path: "tests/stresfile" # Path for the unit stress files needed for the interpolation
+      path: "tests/stressfile" # Path for the unit stress files needed for the interpolation
       parse_config:
         header: 1 # Header lines in the file
         delimiter: " " # Delimiter for the file

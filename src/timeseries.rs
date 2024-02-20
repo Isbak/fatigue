@@ -10,7 +10,7 @@ use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, V
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use crate::config::ValidationError;
-use crate::interpolate::{NDInterpolation, InterpolationStrategy, Linear, NearestNeighbor};
+use crate::interpolate::{NDInterpolation, InterpolationStrategyEnum, Linear, NearestNeighbor};
 use crate::stress::read_stress_tensors_from_file;
 
 const TOLERANCE: f64 = 1e-5; // Example tolerance level
@@ -347,9 +347,10 @@ impl TimeSeries {
 
     fn interpolate(&self, /* interpolation parameters */) -> Result<(), String> {
         for interp in self.interpolations.iter() {
-            let strategy: Box<dyn InterpolationStrategy> = match interp.method.as_str() {
-                "LINEAR" => Box::new(Linear /* Assuming you can instantiate Linear here */),
-                "NEAREST" => Box::new(NearestNeighbor /* Assuming you can instantiate NearestNeighbor here */),
+            // Revised strategy instantiation using the enum
+            let strategy = match interp.method.as_str() {
+                "LINEAR" => InterpolationStrategyEnum::Linear(Linear{}),
+                "NEAREST" => InterpolationStrategyEnum::NearestNeighbor(NearestNeighbor{}),
                 _ => return Err("Unsupported interpolation method".to_string()),
             };
 
@@ -361,45 +362,45 @@ impl TimeSeries {
                 for tensor in tensors.iter() {
                     // Retrieve or create the inner HashMap for the current tensor (node)
                     let node_map = interpolator_map.entry(tensor.0).or_insert_with(HashMap::new);
-
                     // Insert NDInterpolation instances for SXX, SYY, and SZZ
                     node_map.insert("SXX".to_string(), NDInterpolation::new(&strategy));
                     node_map.insert("SYY".to_string(), NDInterpolation::new(&strategy));
                     node_map.insert("SZZ".to_string(), NDInterpolation::new(&strategy));
                     node_map.insert("SXY".to_string(), NDInterpolation::new(&strategy));         
                     node_map.insert("SYZ".to_string(), NDInterpolation::new(&strategy));         
-                    node_map.insert("SZX".to_string(), NDInterpolation::new(&strategy));                                       
+                    node_map.insert("SZX".to_string(), NDInterpolation::new(&strategy));                                    
                 }
             }
+            // Assuming interp.path does not change, move the PathBuf construction outside the first loop.
+            let base_path = PathBuf::from(&interp.path);
 
-            for point in interp.points.iter() {
+            for point in &interp.points {
                 if let Some(ref file_name) = point.file {
-                    let path = PathBuf::from(&interp.path).join(file_name);
-                    let tensors = read_stress_tensors_from_file(&path).unwrap(); // Handle the Result using `?`
-                    for tensor in tensors.iter() {
+                    let path = base_path.join(file_name);
+                    // Use `?` for error propagation instead of `unwrap()`
+                    let tensors = read_stress_tensors_from_file(&path).unwrap();
+
+                    for tensor in &tensors {
+                        // Static mapping of components to methods; consider defining this outside of your loop if applicable.
+                        let components_and_methods = [
+                            ("SXX", tensor.1.sxx()),
+                            ("SYY", tensor.1.syy()),
+                            ("SZZ", tensor.1.szz()),
+                            ("SXY", tensor.1.sxy()),
+                            ("SYZ", tensor.1.syz()),
+                            ("SZX", tensor.1.szx()),
+                        ];
                         if let Some(inner_map) = interpolator_map.get_mut(&tensor.0) {
-                            // Define a list of component names and corresponding methods to call on the tensor to get their values.
-                            let components_and_methods = [
-                                ("SXX", tensor.1.sxx()),
-                                ("SYY", tensor.1.syy()),
-                                ("SZZ", tensor.1.szz()),
-                                ("SXY", tensor.1.sxy()),
-                                ("SYZ", tensor.1.syz()),
-                                ("SZX", tensor.1.szx()),
-                            ];
-                    
                             for (component, value) in components_and_methods.iter() {
                                 if let Some(nd_interpolation) = inner_map.get_mut(*component) {
                                     nd_interpolation.add_point(point.clone(), *value);
                                 } else {
-                                    // Handle the case where a specific stress component does not exist in the map for the current node.
-                                    // You might want to initialize it here or handle the error as appropriate for your application.
+                                    // Handle missing stress component in map for current node, if necessary.
                                 }
                             }
                         } else {
-                            // If the node is not found in `interpolator_map`, handle the error.
-                            // This requires the enclosing function to return Result<_, _>.
-                            return Err(format!("Node {} not found in interpolator_map", tensor.0));
+                            // Handle missing node in `interpolator_map` more gracefully or log error as needed.
+                            return Err(format!("Node {} not found in interpolator_map", tensor.0).into());
                         }
                     }
                 }
@@ -478,6 +479,13 @@ pub struct SensorFile {
 #[cfg(test)]
 mod tests {
     use crate::config::load_config; // Ensure this is correctly imported
+
+    #[test]
+    fn test_interpolate_timeseries() {
+        let config_path = "tests/config.yaml";
+        let config = load_config(config_path).expect("Failed to load config");
+        config.timeseries.interpolate().expect("Failed to interpolate timeseries");
+    }
 
     #[test]
     fn test_parse_input() {

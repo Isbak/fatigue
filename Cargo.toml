@@ -28,6 +28,7 @@ hashbrown = "0.14"
 getrandom = { version = "0.2.12", features = ["js"] }
 clap = { version = "4.4", features = ["derive"] }
 wasm-bindgen = { version = "0.2", optional = true }
+csv = "1.1"
 
 [dev-dependencies]
 criterion = "0.5"
