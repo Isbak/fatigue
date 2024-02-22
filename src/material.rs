@@ -1,7 +1,7 @@
 //! A module for material properties for a structural fatigue analysis application.
 
 use serde::Deserialize;
-use crate::config::ValidationError;
+use anyhow::{Result, anyhow};
 /// Represents material properties used in structural analysis.
 ///
 /// Includes material's mechanical properties such as Young's modulus, Poisson's ratio,
@@ -31,21 +31,21 @@ impl Material {
     ///
     /// Returns `Ok(())` if all properties are valid and within their expected ranges.
     /// Otherwise, it returns a `ValidationError` detailing the issue.
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         if self.name.trim().is_empty() {
-            return Err(ValidationError::new(&format!("name must not be empty, got {}", self.name)));
+            return Err(anyhow!("name must not be empty, got {}", self.name));
         }
         if self.youngs_modulus < 0.0 {
-            return Err(ValidationError::new(&format!("youngs_modulus must be greater than 0.0, got {}", self.youngs_modulus)));
+            return Err(anyhow!("youngs_modulus must be greater than 0.0, got {}", self.youngs_modulus));
         }
         if self.poissons_ratio < 0.0 {
-            return Err(ValidationError::new(&format!("poissons_ratio must be greater than 0.0, got {}", self.poissons_ratio)));
+            return Err(anyhow!("poissons_ratio must be greater than 0.0, got {}", self.poissons_ratio));
         }
         if self.yield_stress < 0.0 {
-            return Err(ValidationError::new(&format!("yield_stress must be greater than 0.0, got {}", self.yield_stress)));
+            return Err(anyhow!("yield_stress must be greater than 0.0, got {}", self.yield_stress));
         }
         if self.ultimate_stress < 0.0 {
-            return Err(ValidationError::new(&format!("ultimate_stress must be greater than 0.0, got {}", self.ultimate_stress)));
+            return Err(anyhow!("ultimate_stress must be greater than 0.0, got {}", self.ultimate_stress));
         }
         self.fatigue.validate()?;
         Ok(())
@@ -74,7 +74,7 @@ impl Fatigue {
     ///
     /// This method returns `Ok(())` if all components are valid. Otherwise, it returns a `ValidationError`
     /// with a detailed message about the validation failure.
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         self.slope.validate()?;
         self.knee.validate()?;
         self.cutoff.validate()?;
@@ -100,12 +100,12 @@ impl Slope {
     ///
     /// Returns `Ok(())` if both `m1` and `m2` are valid. Otherwise, returns a `ValidationError`
     /// with a detailed message about the validation failure.
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         if self.m1 < 0 {
-            return Err(ValidationError::new(&format!("m1 must be greater than 0, got {}", self.m1)));
+            return Err(anyhow!("m1 must be greater than 0, got {}", self.m1));
         }
         if self.m2 < 0 {
-            return Err(ValidationError::new(&format!("m2 must be greater than 0, got {}", self.m2)));
+            return Err(anyhow!("m2 must be greater than 0, got {}", self.m2));
         }
         Ok(())
     }    
@@ -129,12 +129,12 @@ impl Knee {
     ///
     /// Returns `Ok(())` if both `cycle` and `stress` are valid. Otherwise, returns a `ValidationError`
     /// with a detailed message about the validation failure.
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         if self.cycle < 0 {
-            return Err(ValidationError::new(&format!("cycle must be greater than 0, got {}", self.cycle)));
+            return Err(anyhow!("cycle must be greater than 0, got {}", self.cycle));
         }
         if self.stress < 0.0 {
-            return Err(ValidationError::new(&format!("stress must be greater than 0.0, got {}", self.stress)));
+            return Err(anyhow!("stress must be greater than 0.0, got {}", self.stress));
         }
         Ok(())
     }
@@ -158,12 +158,12 @@ impl Cutoff {
     ///
     /// Returns `Ok(())` if both `max` and `min` are valid. Otherwise, returns a `ValidationError`
     /// with a detailed message about the validation failure.
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         if self.max < 0.0 {
-            return Err(ValidationError::new(&format!("max must be greater than 0.0, got {}", self.max)));
+            return Err(anyhow!("max must be greater than 0.0, got {}", self.max));
         }
         if self.min < 0.0 {
-            return Err(ValidationError::new(&format!("min must be greater than 0.0, got {}", self.min)));
+            return Err(anyhow!("min must be greater than 0.0, got {}", self.min));
         }
         Ok(())
     }

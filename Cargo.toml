@@ -29,6 +29,7 @@ getrandom = { version = "0.2.12", features = ["js"] }
 clap = { version = "4.4", features = ["derive"] }
 wasm-bindgen = { version = "0.2", optional = true }
 csv = "1.1"
+anyhow = "1.0"
 
 [dev-dependencies]
 criterion = "0.5"

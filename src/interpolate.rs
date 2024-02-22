@@ -3,6 +3,7 @@ use nalgebra::{DMatrix, DVector};
 use crate::timeseries::Point;
 use rayon::prelude::*;
 
+
 // Define a trait for our interpolation strategies
 pub trait InterpolationStrategy {
     // Corrected to include only two parameters: points and target

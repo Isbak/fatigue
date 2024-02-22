@@ -9,9 +9,9 @@ use std::io::BufReader;
 use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, Value};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
-use crate::config::ValidationError;
 use crate::interpolate::{NDInterpolation, InterpolationStrategyEnum, Linear, NearestNeighbor};
 use crate::stress::read_stress_tensors_from_file;
+use anyhow::{Result, anyhow, Error};
 
 const TOLERANCE: f64 = 1e-5; // Example tolerance level
 
@@ -36,18 +36,18 @@ pub struct LoadCase {
 }
 
 impl LoadCase {
-    fn validate(&self) -> Result<(), ValidationError> {
+    fn validate(&self) -> Result<()> {
         if self.file.trim().is_empty() {
-            return Err(ValidationError::new("file must not be empty".into()));
+            return Err(anyhow!("file must not be empty"));
         }
         if self.frequency < 0.0 {
-            return Err(ValidationError::new(&format!("frequency must be greater than 0.0, got {}", self.frequency)));
+            return Err(anyhow!("frequency must be greater than 0.0, got {}", self.frequency));
         }
         if self.gf_ext < 0.0 {
-            return Err(ValidationError::new(&format!("gf_ext must be greater than 0.0, got {}", self.gf_ext)));
+            return Err(anyhow!("gf_ext must be greater than 0.0, got {}", self.gf_ext));
         }
         if self.gf_fat < 0.0 {
-            return Err(ValidationError::new(&format!("gf_fat must be greater than 0.0, got {}", self.gf_fat)));
+            return Err(anyhow!("gf_fat must be greater than 0.0, got {}", self.gf_fat));
         }
         Ok(())
     }
@@ -61,9 +61,9 @@ pub struct ParseConfig {
 }
 
 impl ParseConfig {
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         if self.delimiter.is_empty() {
-            return Err(ValidationError::new("delimiter must not be empty".into()));
+            return Err(anyhow!("delimiter must not be empty"));
         }
         Ok(())
     }
@@ -116,42 +116,42 @@ impl Hash for Point {
 
 /// Interpolation configuration for a structural analysis application.
 impl Interpolation {
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         self.parse_config.validate()?;
         match self.method.as_str() {
             "LINEAR" | "NEAREST" | "NONE" => Ok(()),
-            _ => Err(ValidationError::new(&format!("method must be LINEAR, NEAREST, or NONE, got {}", self.method))),
+            _ => Err(anyhow!("method must be LINEAR, NEAREST, or NONE, got {}", self.method)),
         }?;
         if self.name.trim().is_empty() {
-            return Err(ValidationError::new("name must not be empty".into()));
+            return Err(anyhow!("name must not be empty"));
         }
 
         if self.path.trim().is_empty() {
-            return Err(ValidationError::new("path must not be empty".into()));
+            return Err(anyhow!("path must not be empty"));
         }
         if self.scale < 0.0 {
-            return Err(ValidationError::new(&format!("scale must be greater than 0.0, got {}", self.scale)));
+            return Err(anyhow!("scale must be greater than 0.0, got {}", self.scale));
         }
         // Validate the dimension and sensor vector length condition
         if self.sensor.len() != self.dimension {
-            return Err(ValidationError::new(&format!("When dimension is {}, the sensor vector must also have a length of 3. Found length: {}", self.dimension, self.sensor.len())));
+            return Err(anyhow!("When dimension is {}, the sensor vector must also have a length of 3. Found length: {}", self.dimension, self.sensor.len()));
         }
         if self.sensor.is_empty() {
-            return Err(ValidationError::new("sensor must not be empty".into()));
+            return Err(anyhow!("sensor must not be empty"));
         }
 
         if self.points.is_empty() {
-            return Err(ValidationError::new("points must not be empty".into()));
+            return Err(anyhow!("points must not be empty"));
         }
         for point in &self.points {
             if point.file.as_ref().unwrap().trim().is_empty() {
-                return Err(ValidationError::new("file must not be empty".into()));
+                return Err(anyhow!("file must not be empty"));
             }
             if point.coordinates.len() != self.dimension {
-                return Err(ValidationError::new(&format!("When dimension is {}, the values per point must also have a length of 3. Found length: {}", self.dimension, point.coordinates.len())));
+                return Err(anyhow!("When dimension is {}, the values per point must also have a length of 3. Found length: {}", self.dimension, point.coordinates.len()));
             }
             if point.coordinates.is_empty() {
-                return Err(ValidationError::new("value must not be empty".into()));
+                return Err(anyhow!("value must not be empty"));
             }
         }
         Ok(())
@@ -178,7 +178,7 @@ impl TimeSeries {
     /// Returns `Ok(())` if all configurations and data are valid. Otherwise,
     /// returns a `ValidationError` detailing the specific issue encountered.
 
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         // Validates the existence of the sensor file and the correctness of specified paths.
         // Also ensures that interpolations and load cases are properly defined.
         // Detailed validation of each component is performed to ensure data integrity.
@@ -186,22 +186,22 @@ impl TimeSeries {
         self.expressions.validate()?;
         self.validate_variables_and_values()?;
         if !Path::new(&self.sensorfile).exists() {
-            return Err(ValidationError::new("sensorfile does not exist".into()));
+            return Err(anyhow!("sensorfile does not exist"));
         }        
         if self.path.trim().is_empty() {
-            return Err(ValidationError::new("path must not be empty".into()));
+            return Err(anyhow!("path must not be empty"));
         }
         if self.sensorfile.trim().is_empty() {
-            return Err(ValidationError::new("sensorfile must not be empty".into()));
+            return Err(anyhow!("sensorfile must not be empty"));
         }
         if self.interpolations.is_empty() {
-            return Err(ValidationError::new("interpolations must not be empty".into()));
+            return Err(anyhow!("interpolations must not be empty"));
         }
         for interp in &self.interpolations {
             interp.validate()?;
         }
         if self.loadcases.is_empty() {
-            return Err(ValidationError::new("loadcases must not be empty".into()));
+            return Err(anyhow!("loadcases must not be empty"));
         }
         for lc in &self.loadcases {
             // Construct the full path for the loadcase file
@@ -209,7 +209,7 @@ impl TimeSeries {
             let full_path = format!("{}/{}", self.path.trim(), lc.file.trim());
             
             if !Path::new(&full_path).exists() {
-                return Err(ValidationError::new(&format!("loadcase file does not exist: {}", full_path)));
+                return Err(anyhow!("loadcase file does not exist: {}", full_path));
             }            
         }
         Ok(())
@@ -261,8 +261,7 @@ impl TimeSeries {
     ///
     /// Returns `Ok(())` if all variables and values are valid. Otherwise,
     /// returns a `ValidationError` with details on the specific validation failure.
-
-    fn validate_variables_and_values(&self) -> Result<(), ValidationError> {
+    fn validate_variables_and_values(&self) -> Result<()> {
         // Validates variable names and values, ensuring compliance with rules.
         let mut valid_names = HashSet::<String>::new();
         let re = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
@@ -275,38 +274,39 @@ impl TimeSeries {
         }
         for (key, value) in &self.variables {
             if !re.is_match(key) {
-                return Err(ValidationError::new(&format!("Invalid variable name: {}", key)));
+                return Err(anyhow!("Invalid variable name: {}", key));
             }
             if value.trim().is_empty() {
-                return Err(ValidationError::new(&format!("Variable expression is empty for: {}", key)));
+                return Err(anyhow!("Variable expression is empty for: {}", key));
             }
         }
         for (key, value) in &self.parameters {
             if key.trim().is_empty() {
-                return Err(ValidationError::new("parameter key must not be empty".into()));
+                return Err(anyhow!("parameter key must not be empty"));
             }
             if value.is_nan() {
-                return Err(ValidationError::new(&format!("parameter value must be a number, got {}", value)));
+                return Err(anyhow!("parameter value must be a number, got {}", value));
             }
         }
         // Validate variables expressions
         for (name, expression) in &self.variables {
             if !self.expression_valid(expression, &valid_names) {
-                return Err(ValidationError::new(&format!("Invalid expression for variable '{}': {}", name, expression)));
+                return Err(anyhow!("Invalid expression for variable '{}': {}", name, expression));
             }
         }
         Ok(())
     }
 
-     pub fn parse_input(&self) -> Result<HashMap<String, Value>, String> {
+     pub fn parse_input(&self) -> Result<HashMap<String, Value>, Error> {
         let mut context = HashMapContext::new();
     
         // Insert parameters into context
         for (key, value) in &self.parameters {
             println!("key: {:#?}", key);
             println!("value: {:#?}", value);
-            if context.set_value(key.clone(), (*value).into()).is_err() {
-                return Err(format!("Failed to insert parameter '{}' into context", key));
+            let evalexpr_value = Value::Float(*value); // Clone if value cannot be copied
+            if context.set_value(key.clone(), evalexpr_value.clone()).is_err() {
+                return Err(anyhow!("Failed to insert parameter '{}' into context", key));
             }
         }
     
@@ -314,15 +314,15 @@ impl TimeSeries {
         for key in &self.expressions.order {
             let expression = self.variables
             .get(key)
-            .ok_or_else(|| format!("Variable '{}' not found in config", key))?;
+            .ok_or_else(|| anyhow!("Variable '{}' not found in config", key))?;
             match eval_with_context(expression, &context) {
                 Ok(result) => {
                     // Insert the result of the evaluation into the context
                     if context.set_value(key.to_string(), result.clone()).is_err() {
-                        return Err(format!("Failed to insert result for variable '{}' into context", key));
+                        return Err(anyhow!("Failed to insert result for variable '{}' into context", key));
                     }
                 },
-                Err(e) => return Err(format!("Failed to evaluate expression for variable '{}': {}", key, e)),
+                Err(e) => return Err(anyhow!("Failed to evaluate expression for variable '{}': {}", key, e)),
             }
         }
     
@@ -336,7 +336,7 @@ impl TimeSeries {
                         results.insert(key.clone(), result);
                     },
                     Err(e) => {
-                        return Err(format!("Failed to evaluate expression '{}' for key '{}': {}", expression, key, e));
+                        return Err(anyhow!("Failed to evaluate expression '{}' for key '{}': {}", expression, key, e));
                     }
                 }
             }
@@ -400,7 +400,7 @@ impl TimeSeries {
                             }
                         } else {
                             // Handle missing node in `interpolator_map` more gracefully or log error as needed.
-                            return Err(format!("Node {} not found in interpolator_map", tensor.0).into());
+                            return Err(format!("Node {} not found in interpolator_map", tensor.0));
                         }
                     }
                 }
@@ -457,9 +457,9 @@ impl Expressions {
     ///
     /// This method ensures that the application has a clear, non-empty sequence of expressions to evaluate,
     /// maintaining the integrity of the computational process.    
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         if self.order.is_empty() {
-            return Err(ValidationError::new("order must not be empty".into()));
+            return Err(anyhow!("order must not be empty"));
         }
         Ok(())
     }

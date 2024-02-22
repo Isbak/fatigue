@@ -2,6 +2,7 @@
 use crate::config::load_config;
 pub use crate::stress::read_stress_tensors_from_file;
 use std::path::PathBuf;
+use anyhow::Result;
 
 pub fn run(config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Running with configuration: {}", config_path);

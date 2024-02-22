@@ -1,38 +1,12 @@
 //! A module for validating and managing configurations for a structural analysis application.
 
 use serde::Deserialize;
-use std::fmt;
 use std::fs;
 use std::path::Path;
 use serde_yaml;
-
+use anyhow::{Result, anyhow};
 use crate::material::Material; 
 use crate::timeseries::TimeSeries;
-
-/// Represents an error that can occur during validation of configuration data.
-#[derive(Debug)]
-pub struct ValidationError{
-    message: String,
-}
-
-impl ValidationError {
-    /// Creates a new `ValidationError` with a given message.
-    ///
-    /// # Arguments
-    ///
-    /// * `message` - A description of the error.    
-    pub fn new(message: &str) -> ValidationError {
-        ValidationError {
-            message: message.to_owned(),
-        }
-    }
-}
-
-impl fmt::Display for ValidationError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
 
 /// Represents the configuration for a structural analysis application.
 #[derive(Debug, Deserialize)]
@@ -48,7 +22,7 @@ impl Config {
     ///
     /// This method checks the validity of each component of the configuration
     /// and ensures all required conditions are met.
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         self.solution.validate()?;
         self.material.validate()?;
         self.safety_factor.validate()?;
@@ -59,16 +33,15 @@ impl Config {
 
     /// Validates that all sensors specified in the `TimeSeries` configuration
     /// exist within the sensor file.
-    fn validate_sensor_against_sensorfile(&self) -> Result<(), ValidationError> {
-        // Attempt to read the sensorfile and handle potential errors gracefully
+    fn validate_sensor_against_sensorfile(&self) -> Result<()> {
         let sen = self.timeseries.read_sensorfile()
-            .map_err(|e| ValidationError::new(&format!("Failed to read sensor file: {}", e)))?;
+            .map_err(|e| anyhow!("Failed to read sensor file: {}", e))?;
         
         for interp in self.timeseries.interpolations.iter() {
             for sensor in interp.sensor.iter() {
-                // Direct comparison without converting to String
                 if !sen.iter().any(|s| s.name == *sensor) {
-                    return Err(ValidationError::new(&format!("Sensor '{}' not found in sensorfile", sensor)));
+                    // Use anyhow! to create an error with a dynamic message
+                    return Err(anyhow!("Sensor '{}' not found in sensorfile", sensor));
                 }
             }
         }
@@ -118,19 +91,19 @@ impl Solution {
     /// If any configuration is invalid, it returns a `ValidationError` with a detailed explanation.
     ///
     /// ```    
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         match self.run_type.as_str() {
             "FAT" | "NONE" => Ok(()),
-            _ => Err(ValidationError::new(&format!("run_type must be FAT or NONE, got {}", self.run_type))),
+            _ => Err(anyhow!("run_type must be FAT or NONE, got {}", self.run_type)),
         }?;
 
         match self.mode.as_str() {
             "STRESS" | "NONE" => Ok(()),
-            _ => Err(ValidationError::new(&format!("mode must be STRESS, STRAIN, or NONE, got {}", self.mode))),
+            _ => Err(anyhow!("mode must be STRESS, STRAIN, or NONE, got {}", self.mode)),
         }?;
         match self.output.as_str() {
             "JSON" => Ok(()),
-            _ => Err(ValidationError::new(&format!("output must be ANSYS or ASCII, got {}", self.output))),
+            _ => Err(anyhow!("output must be ANSYS or ASCII, got {}", self.output)),
         }?;
 
         self.stress_criteria.validate()?;
@@ -189,16 +162,16 @@ impl StressCriteria {
     /// };
     /// assert!(criteria_sxxcrit_valid.validate().is_ok());
     /// ```    
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         if self.method == "SXXCRIT" {
             match self.number {
                 Some(number) if number > 0 => (),
-                _ => return Err(ValidationError::new("number must be greater than 0 for method SXXCRIT".into())),
+                _ => return Err(anyhow!("number must be greater than 0 for method SXXCRIT")),
             }
         };
         match self.method.as_str() {
             "VONMISES" | "MAXIMUM" | "SXXCRIT" | "NONE" => Ok(()),
-            _ => Err(ValidationError::new(&format!("method must be VONMISES, MAXIMUM, SXXCRIT, or NONE, got {}", self.method))),
+            _ => Err(anyhow!("method must be VONMISES, MAXIMUM, SXXCRIT, or NONE, got {}", self.method)),
         }?;
         Ok(())
     }
@@ -249,21 +222,21 @@ impl Mean {
     /// assert!(invalid_mean_correction.validate().is_err());
     /// ```    
     /// 
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         // Validate 'mean' field
         match self.mean.as_str() {
             "GOODMAN" | "LINEAR" | "BI-LINEAR" | "NONE" => Ok(()),
-            _ => Err(ValidationError::new(&format!("mean must be GOODMAN, LINEAR, BI-LINEAR, or NONE, got {}", self.mean))),
+            _ => Err(anyhow!("mean must be GOODMAN, LINEAR, BI-LINEAR, or NONE, got {}", self.mean)),
         }?;
 
         // Validate 'postfix' field
         match self.postfix.as_str() {
             "FIXEDMEAN" | "NONE" => Ok(()),
-            _ => Err(ValidationError::new(&format!("postfix must be FIXEDMEAN or NONE, got {}", self.postfix))),
+            _ => Err(anyhow!("postfix must be FIXEDMEAN or NONE, got {}", self.postfix)),
         }?;
 
         if !(0.0..=1.0).contains(&self.number.parse::<f64>().unwrap()) {
-            return Err(ValidationError::new(&format!("number must be between 0.0 and 1.0, got {}", self.number)));
+            return Err(anyhow!("number must be between 0.0 and 1.0, got {}", self.number));
         };
         Ok(())
     }
@@ -308,14 +281,14 @@ impl Node {
     /// let invalid_node_range = Node { from: 0, to: 5, path: String::from("path/to/data") };
     /// assert!(invalid_node_range.validate().is_err());
     /// ```
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         // Validate the 'from' field to ensure it's greater than 0
         if self.from <= 0 {
-            return Err(ValidationError::new(&format!("'from' must be greater than 0, got {}", self.from)));
+            return Err(anyhow!("'from' must be greater than 0, got {}", self.from));
         };
         // Assuming similar validation needed for the 'to' field
         if self.to <= 0 {
-            return Err(ValidationError::new(&format!("'to' must be greater than 0, got {}", self.to)));
+            return Err(anyhow!("'to' must be greater than 0, got {}", self.to));
         };
         Ok(())
     }
@@ -340,12 +313,12 @@ impl Damage {
     ///
     /// Returns `Ok(())` if both `error` and `dadm` are within the range [0.0, 1.0]. Otherwise,
     /// it returns a `ValidationError` detailing which field is out of the expected range.    
-    pub fn validate(&self) -> Result<(), ValidationError>{
+    pub fn validate(&self) -> Result<()>{
         if !(0.0..=1.0).contains(&self.error) {
-            return Err(ValidationError::new(&format!("error must be between 0.0 and 1.0, got {}", self.error)));
+            return Err(anyhow!("error must be between 0.0 and 1.0, got {}", self.error));
         }
         if !(0.0..=1.0).contains(&self.dadm) {
-            return Err(ValidationError::new(&format!("dadm must be between 0.0 and 1.0, got {}", self.dadm)));
+            return Err(anyhow!("dadm must be between 0.0 and 1.0, got {}", self.dadm));
         }
         Ok(())
     }
@@ -391,15 +364,15 @@ impl SafetyFactor {
     /// let sf_invalid = SafetyFactor { gmre: 2.1, gmrm: 1.0, gmfat: 0.9 };
     /// assert!(sf_invalid.validate().is_err());
     /// ```
-    pub fn validate(&self) -> Result<(), ValidationError> {
+    pub fn validate(&self) -> Result<()> {
         if !(1.0..=2.0).contains(&self.gmre) {
-            return Err(ValidationError::new(&format!("gmre must be between 1.0 and 2.0, got {}", self.gmre)));
+            return Err(anyhow!("gmre must be between 1.0 and 2.0, got {}", self.gmre));
         }
         if !(1.0..=2.0).contains(&self.gmrm) {
-            return Err(ValidationError::new(&format!("gmrm must be between 1.0 and 2.0, got {}", self.gmrm)));
+            return Err(anyhow!("gmrm must be between 1.0 and 2.0, got {}", self.gmrm));
         }
         if !(1.0..=2.0).contains(&self.gmfat) {
-            return Err(ValidationError::new(&format!("gmfat must be between 1.0 and 2.0, got {}", self.gmfat)));
+            return Err(anyhow!("gmfat must be between 1.0 and 2.0, got {}", self.gmfat));
         }
         Ok(())
     }
