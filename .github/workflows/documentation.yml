@@ -1,0 +1,33 @@
+name: Generate and Publish Documentation
+
+on:
+  push:
+    branches:
+      - main  # Or your default branch, adjust as needed
+
+jobs:
+  build_docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Ensures history is fully cloned
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Generate Documentation
+      run: cargo doc --no-deps
+
+    - name: Publish Documentation
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.WASI_TOKEN }}
+        publish_dir: ./target/doc
+        # If using a separate branch for GitHub Pages:
+        publish_branch: gh-pages  # Or any branch you prefer
+        # If deploying to a specific folder, uncomment the following line
+        # destination_dir: 'docs'  # Optional: Use if you want to deploy to a directory like 'docs'
