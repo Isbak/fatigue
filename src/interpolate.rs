@@ -1,7 +1,48 @@
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use nalgebra::{DMatrix, DVector};
-use crate::timeseries::Point;
 use rayon::prelude::*;
+use serde::Deserialize;
+
+const TOLERANCE: f64 = 1e-5;
+
+/// An N-dimensional interpolation input point.
+///
+/// `coordinates` participate in interpolation; `file` is optional metadata used
+/// by the CLI pipeline to locate the stress-tensor file backing this point.
+#[derive(Debug, Deserialize, Clone)]
+pub struct Point {
+    pub file: Option<String>,
+    pub coordinates: Vec<f64>,
+}
+
+impl Point {
+    pub fn new(file: Option<String>, coordinates: Vec<f64>) -> Self {
+        Point { file, coordinates }
+    }
+}
+
+impl Eq for Point {}
+
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.coordinates.len() == other.coordinates.len()
+            && self
+                .coordinates
+                .iter()
+                .zip(other.coordinates.iter())
+                .all(|(a, b)| (a - b).abs() <= TOLERANCE)
+    }
+}
+
+impl Hash for Point {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for &coord in &self.coordinates {
+            let discretized = (coord / TOLERANCE).round() * TOLERANCE;
+            discretized.to_bits().hash(state);
+        }
+    }
+}
 
 
 // Define a trait for our interpolation strategies

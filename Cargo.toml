@@ -41,3 +41,4 @@ harness = false # This allows you to use your own test harness, such as Criterio
 [[bin]]
 name = "fatigue"  # The name of your binary
 path = "src/main.rs"  # The new path to your crate root
+required-features = ["cli"]
