@@ -31,4 +31,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: audit
-        args: --deny warnings
+        # RUSTSEC-2024-0436: `paste` crate is unmaintained (not a
+        # vulnerability). Pulled in transitively via nalgebra 0.32 → simba.
+        # Revisit after upgrading nalgebra.
+        args: --deny warnings --ignore RUSTSEC-2024-0436
