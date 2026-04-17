@@ -50,7 +50,7 @@ pub trait InterpolationStrategy {
     fn interpolate(
         &self,
         points: &HashMap<Point, f64>,
-        target: &Vec<Vec<f64>>,
+        target: &[Vec<f64>],
     ) -> Result<Vec<f64>, String>;
 }
 
@@ -61,7 +61,7 @@ impl InterpolationStrategy for NearestNeighbor {
     fn interpolate(
         &self,
         points: &HashMap<Point, f64>,
-        target: &Vec<Vec<f64>>,
+        target: &[Vec<f64>],
     ) -> Result<Vec<f64>, String> {
         if points.is_empty() {
             return Err("No points available for interpolation.".to_string());
@@ -102,7 +102,7 @@ impl InterpolationStrategy for Linear {
     fn interpolate(
         &self,
         points: &HashMap<Point, f64>,
-        target: &Vec<Vec<f64>>,
+        target: &[Vec<f64>],
     ) -> Result<Vec<f64>, String> {
         if points.len() < 2 {
             return Err("Not enough points for interpolation".to_string());
@@ -185,7 +185,7 @@ impl InterpolationStrategyEnum {
     pub fn interpolate(
         &self,
         points: &HashMap<Point, f64>,
-        target: &Vec<Vec<f64>>,
+        target: &[Vec<f64>],
     ) -> Result<Vec<f64>, String> {
         match self {
             InterpolationStrategyEnum::Linear(strategy) => strategy.interpolate(points, target),
@@ -216,7 +216,7 @@ impl<'a> NDInterpolation<'a> {
     }
 
     // Delegates to the strategy's interpolate method
-    pub fn interpolate(&self, target: &Vec<Vec<f64>>) -> Result<Vec<f64>, String> {
+    pub fn interpolate(&self, target: &[Vec<f64>]) -> Result<Vec<f64>, String> {
         self.strategy.interpolate(&self.points, target)
     }
 }

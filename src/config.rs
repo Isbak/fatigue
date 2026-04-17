@@ -83,8 +83,9 @@ impl Solution {
     /// - `run_type` is either "FAT" or "NONE".
     /// - `mode` is either "STRESS" or "NONE".
     /// - `output` is "JSON", indicating the output format.
-    /// Additionally, it invokes validation on nested structs (`stress_criteria`, `mean`, `node`, `damage`)
-    /// to ensure their configurations are also valid.
+    ///
+    /// Additionally, it invokes validation on nested structs (`stress_criteria`,
+    /// `mean`, `node`, `damage`) to ensure their configurations are also valid.
     ///
     /// # Returns
     ///
@@ -415,12 +416,6 @@ impl SafetyFactor {
     }
 }
 
-/// Additional struct and impl blocks would follow the same pattern:
-/// - Briefly describe the purpose of the struct.
-/// - Document each public field if necessary.
-/// - For each method, describe what it does, its parameters, and its return value.
-/// - Use examples in the documentation where appropriate.
-
 /// Loads the configuration from a YAML file.
 ///
 /// # Arguments
@@ -434,7 +429,6 @@ impl SafetyFactor {
 /// # Errors
 ///
 /// This function will return an error if reading or parsing the configuration file fails.
-
 pub fn load_config<P: AsRef<Path>>(config_path: P) -> Result<Config, Box<dyn std::error::Error>> {
     let content = fs::read_to_string(config_path)?;
     let config: Config = serde_yaml::from_str(&content)?;

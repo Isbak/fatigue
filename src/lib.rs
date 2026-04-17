@@ -4,8 +4,6 @@ pub mod interpolate;
 pub mod rainflow;
 pub use interpolate::{InterpolationStrategy, Linear, NDInterpolation};
 #[cfg(feature = "cli")]
-mod app_logic;
-#[cfg(feature = "cli")]
 pub mod config;
 #[cfg(feature = "cli")]
 pub mod material;

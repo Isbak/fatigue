@@ -56,15 +56,6 @@ impl StressTensor {
         )
     }
 
-    /// Converts the internal Vector6 back to a Matrix3
-    /* fn vector_to_matrix(vector: &Vector6<f64>) -> Matrix3<f64> {
-        Matrix3::new(
-            vector[0], vector[3], vector[5], // Row 1: σxx, τxy, τzx
-            vector[3], vector[1], vector[4], // Row 2: τxy, σyy, τyz
-            vector[5], vector[4], vector[2], // Row 3: τzx, τyz, σzz
-        )
-    }*/
-
     // method to update the stress tensor
     pub fn update_stress(&mut self, matrix: Matrix3<f64>) {
         self.matrix = matrix;
