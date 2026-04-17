@@ -25,5 +25,5 @@ pub fn run_rainflow(stress: &[f64]) -> Vec<f64> {
     // Combine the means and ranges into a single Vec to return.
     // This is just one way to handle the return; you might choose a different method
     // depending on how you want to process the data on the JavaScript side.
-    means.into_iter().chain(ranges.into_iter()).collect()
+    means.into_iter().chain(ranges).collect()
 }

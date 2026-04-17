@@ -82,7 +82,7 @@ impl StressTensor {
         let eigenvectors = eigen.eigenvectors;
         let x = eigenvectors.column(0).normalize();
         let mut z = eigenvectors.column(2).into_owned();
-        z = z / eigenvectors.column(2).norm();
+        z /= eigenvectors.column(2).norm();
         let y = x.cross(&z);
         let rot = Matrix3::from_columns(&[x, z, y]);
         rot.transpose()
@@ -195,11 +195,11 @@ mod tests {
         let matrix = Matrix3::new(1.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0, 0.0, 3.0);
         let stress = StressTensor::new(matrix);
         let max_principal_stress = stress.max_principal_stress();
-        assert_relative_eq!(max_principal_stress, 4.2360679774997898, epsilon = 1e-6);
+        assert_relative_eq!(max_principal_stress, 4.236_067_977_499_79, epsilon = 1e-6);
         let von_mises_stress = stress.von_mises_stress();
         assert_relative_eq!(von_mises_stress, 4.358898943540674, epsilon = 1e-6);
         let matrix = Matrix3::new(
-            -17.863839999999999,
+            -17.863_84,
             1.54556,
             0.016324870000000002,
             1.54556,

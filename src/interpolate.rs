@@ -188,9 +188,9 @@ impl InterpolationStrategyEnum {
         target: &Vec<Vec<f64>>,
     ) -> Result<Vec<f64>, String> {
         match self {
-            InterpolationStrategyEnum::Linear(strategy) => strategy.interpolate(&points, &target),
+            InterpolationStrategyEnum::Linear(strategy) => strategy.interpolate(points, target),
             InterpolationStrategyEnum::NearestNeighbor(strategy) => {
-                strategy.interpolate(&points, &target)
+                strategy.interpolate(points, target)
             }
         }
     }
@@ -217,7 +217,7 @@ impl<'a> NDInterpolation<'a> {
 
     // Delegates to the strategy's interpolate method
     pub fn interpolate(&self, target: &Vec<Vec<f64>>) -> Result<Vec<f64>, String> {
-        self.strategy.interpolate(&self.points, &target)
+        self.strategy.interpolate(&self.points, target)
     }
 }
 
@@ -286,7 +286,7 @@ mod tests {
         let target = vec![vec![6.0]];
         let interpolated_values = interpolator.interpolate(&target).unwrap();
 
-        let success = approx_eq(&interpolated_values, &vec![12.0], TOLERANCE);
+        let success = approx_eq(&interpolated_values, &[12.0], TOLERANCE);
         if !success {
             let message = format!(
                 "The extrapolated value was {:?}, but {:?} was expected",

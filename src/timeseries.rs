@@ -370,9 +370,7 @@ impl TimeSeries {
                 let tensors = read_stress_tensors_from_file(&path).unwrap(); // Handle the Result using `?`
                 for tensor in tensors.iter() {
                     // Retrieve or create the inner HashMap for the current tensor (node)
-                    let node_map = interpolator_map
-                        .entry(tensor.0)
-                        .or_insert_with(HashMap::new);
+                    let node_map = interpolator_map.entry(tensor.0).or_default();
                     // Insert NDInterpolation instances for SXX, SYY, and SZZ
                     node_map.insert("SXX".to_string(), NDInterpolation::new(&strategy));
                     node_map.insert("SYY".to_string(), NDInterpolation::new(&strategy));
