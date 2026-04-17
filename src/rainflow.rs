@@ -73,10 +73,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_rainflow(){
-        let stress_sequence = vec![-2.0, 1.0, -3.0, 5.0, -1.0, 3.0, -4.0, 4.0, -3.0, 1.0, -2.0, 3.0, 6.0];
+    fn test_rainflow() {
+        let stress_sequence = vec![
+            -2.0, 1.0, -3.0, 5.0, -1.0, 3.0, -4.0, 4.0, -3.0, 1.0, -2.0, 3.0, 6.0,
+        ];
         let (means, ranges) = rainflow(&stress_sequence);
-    
+
         // Output the results
         for (mean, range) in means.iter().zip(ranges.iter()) {
             println!("{:.4}, {:.4}", mean, range);

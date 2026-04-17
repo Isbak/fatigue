@@ -1,7 +1,7 @@
 //! A module for material properties for a structural fatigue analysis application.
 
+use anyhow::{anyhow, Result};
 use serde::Deserialize;
-use anyhow::{Result, anyhow};
 /// Represents material properties used in structural analysis.
 ///
 /// Includes material's mechanical properties such as Young's modulus, Poisson's ratio,
@@ -36,16 +36,28 @@ impl Material {
             return Err(anyhow!("name must not be empty, got {}", self.name));
         }
         if self.youngs_modulus < 0.0 {
-            return Err(anyhow!("youngs_modulus must be greater than 0.0, got {}", self.youngs_modulus));
+            return Err(anyhow!(
+                "youngs_modulus must be greater than 0.0, got {}",
+                self.youngs_modulus
+            ));
         }
         if self.poissons_ratio < 0.0 {
-            return Err(anyhow!("poissons_ratio must be greater than 0.0, got {}", self.poissons_ratio));
+            return Err(anyhow!(
+                "poissons_ratio must be greater than 0.0, got {}",
+                self.poissons_ratio
+            ));
         }
         if self.yield_stress < 0.0 {
-            return Err(anyhow!("yield_stress must be greater than 0.0, got {}", self.yield_stress));
+            return Err(anyhow!(
+                "yield_stress must be greater than 0.0, got {}",
+                self.yield_stress
+            ));
         }
         if self.ultimate_stress < 0.0 {
-            return Err(anyhow!("ultimate_stress must be greater than 0.0, got {}", self.ultimate_stress));
+            return Err(anyhow!(
+                "ultimate_stress must be greater than 0.0, got {}",
+                self.ultimate_stress
+            ));
         }
         self.fatigue.validate()?;
         Ok(())
@@ -108,7 +120,7 @@ impl Slope {
             return Err(anyhow!("m2 must be greater than 0, got {}", self.m2));
         }
         Ok(())
-    }    
+    }
 }
 
 /// Represents the knee point of the S-N curve for fatigue analysis.
@@ -134,7 +146,10 @@ impl Knee {
             return Err(anyhow!("cycle must be greater than 0, got {}", self.cycle));
         }
         if self.stress < 0.0 {
-            return Err(anyhow!("stress must be greater than 0.0, got {}", self.stress));
+            return Err(anyhow!(
+                "stress must be greater than 0.0, got {}",
+                self.stress
+            ));
         }
         Ok(())
     }

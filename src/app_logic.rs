@@ -1,8 +1,8 @@
 //! A module for the main application logic for the fatigue assessment tool
 use crate::config::load_config;
 pub use crate::stress::read_stress_tensors_from_file;
-use std::path::PathBuf;
 use anyhow::Result;
+use std::path::PathBuf;
 
 pub fn run(config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Running with configuration: {}", config_path);
@@ -10,7 +10,7 @@ pub fn run(config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     let res = conf.timeseries.parse_input();
     for inter in conf.timeseries.interpolations.iter() {
         for point in inter.points.iter() {
-            if let Some(ref file_name) = point.file{
+            if let Some(ref file_name) = point.file {
                 let path = PathBuf::from(&inter.path).join(file_name); // Correctly constructs the path
                 let tensors = read_stress_tensors_from_file(&path)?; // Assuming the function accepts a `&Path`
                 println!("Stress tensors: {:?}", tensors);

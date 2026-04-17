@@ -1,17 +1,17 @@
 //! Contains the `TimeSeries` struct and related functionality for time series analysis.
-use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
-use regex::Regex;
-use serde_json::from_str;
-use std::path::Path;
-use std::fs::{File, read_to_string};
-use std::io::BufReader;
-use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, Value};
-use std::path::PathBuf;
-use crate::interpolate::{NDInterpolation, InterpolationStrategyEnum, Linear, NearestNeighbor};
 pub use crate::interpolate::Point;
+use crate::interpolate::{InterpolationStrategyEnum, Linear, NDInterpolation, NearestNeighbor};
 use crate::stress::read_stress_tensors_from_file;
-use anyhow::{Result, anyhow, Error};
+use anyhow::{anyhow, Error, Result};
+use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, Value};
+use regex::Regex;
+use serde::Deserialize;
+use serde_json::from_str;
+use std::collections::{HashMap, HashSet};
+use std::fs::{read_to_string, File};
+use std::io::BufReader;
+use std::path::Path;
+use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
 pub struct TimeSeries {
@@ -39,18 +39,26 @@ impl LoadCase {
             return Err(anyhow!("file must not be empty"));
         }
         if self.frequency < 0.0 {
-            return Err(anyhow!("frequency must be greater than 0.0, got {}", self.frequency));
+            return Err(anyhow!(
+                "frequency must be greater than 0.0, got {}",
+                self.frequency
+            ));
         }
         if self.gf_ext < 0.0 {
-            return Err(anyhow!("gf_ext must be greater than 0.0, got {}", self.gf_ext));
+            return Err(anyhow!(
+                "gf_ext must be greater than 0.0, got {}",
+                self.gf_ext
+            ));
         }
         if self.gf_fat < 0.0 {
-            return Err(anyhow!("gf_fat must be greater than 0.0, got {}", self.gf_fat));
+            return Err(anyhow!(
+                "gf_fat must be greater than 0.0, got {}",
+                self.gf_fat
+            ));
         }
         Ok(())
     }
 }
-
 
 #[derive(Debug, Deserialize)]
 pub struct ParseConfig {
@@ -86,7 +94,10 @@ impl Interpolation {
         self.parse_config.validate()?;
         match self.method.as_str() {
             "LINEAR" | "NEAREST" | "NONE" => Ok(()),
-            _ => Err(anyhow!("method must be LINEAR, NEAREST, or NONE, got {}", self.method)),
+            _ => Err(anyhow!(
+                "method must be LINEAR, NEAREST, or NONE, got {}",
+                self.method
+            )),
         }?;
         if self.name.trim().is_empty() {
             return Err(anyhow!("name must not be empty"));
@@ -96,7 +107,10 @@ impl Interpolation {
             return Err(anyhow!("path must not be empty"));
         }
         if self.scale < 0.0 {
-            return Err(anyhow!("scale must be greater than 0.0, got {}", self.scale));
+            return Err(anyhow!(
+                "scale must be greater than 0.0, got {}",
+                self.scale
+            ));
         }
         // Validate the dimension and sensor vector length condition
         if self.sensor.len() != self.dimension {
@@ -153,7 +167,7 @@ impl TimeSeries {
         self.validate_variables_and_values()?;
         if !Path::new(&self.sensorfile).exists() {
             return Err(anyhow!("sensorfile does not exist"));
-        }        
+        }
         if self.path.trim().is_empty() {
             return Err(anyhow!("path must not be empty"));
         }
@@ -173,10 +187,10 @@ impl TimeSeries {
             // Construct the full path for the loadcase file
             lc.validate()?;
             let full_path = format!("{}/{}", self.path.trim(), lc.file.trim());
-            
+
             if !Path::new(&full_path).exists() {
                 return Err(anyhow!("loadcase file does not exist: {}", full_path));
-            }            
+            }
         }
         Ok(())
     }
@@ -188,8 +202,8 @@ impl TimeSeries {
     /// Otherwise, returns an error detailing the issue encountered during file reading or deserialization.
 
     pub fn read_sensorfile(&self) -> Result<Vec<SensorFile>, Box<dyn std::error::Error>> {
-        // Reads the sensor file, deserializes its content into `SensorFile` structs, 
-        // and returns them for further processing.        
+        // Reads the sensor file, deserializes its content into `SensorFile` structs,
+        // and returns them for further processing.
         let content = read_to_string(&self.sensorfile)?;
         let sensors: Vec<SensorFile> = match from_str(&content) {
             Ok(sensors) => sensors,
@@ -232,11 +246,17 @@ impl TimeSeries {
         let mut valid_names = HashSet::<String>::new();
         let re = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
         // Add parameters and variables to valid names
-        self.parameters.iter().for_each(|(key, _)| { valid_names.insert(key.clone()); });
-        self.variables.iter().for_each(|(key, _)| { valid_names.insert(key.clone()); });
+        self.parameters.iter().for_each(|(key, _)| {
+            valid_names.insert(key.clone());
+        });
+        self.variables.iter().for_each(|(key, _)| {
+            valid_names.insert(key.clone());
+        });
         for interp in self.interpolations.iter() {
             valid_names.insert(interp.name.clone());
-            interp.sensor.iter().for_each(|sensor| { valid_names.insert(sensor.clone()); });
+            interp.sensor.iter().for_each(|sensor| {
+                valid_names.insert(sensor.clone());
+            });
         }
         for (key, value) in &self.variables {
             if !re.is_match(key) {
@@ -257,84 +277,109 @@ impl TimeSeries {
         // Validate variables expressions
         for (name, expression) in &self.variables {
             if !self.expression_valid(expression, &valid_names) {
-                return Err(anyhow!("Invalid expression for variable '{}': {}", name, expression));
+                return Err(anyhow!(
+                    "Invalid expression for variable '{}': {}",
+                    name,
+                    expression
+                ));
             }
         }
         Ok(())
     }
 
-     pub fn parse_input(&self) -> Result<HashMap<String, Value>, Error> {
+    pub fn parse_input(&self) -> Result<HashMap<String, Value>, Error> {
         let mut context = HashMapContext::new();
-    
+
         // Insert parameters into context
         for (key, value) in &self.parameters {
             println!("key: {:#?}", key);
             println!("value: {:#?}", value);
             let evalexpr_value = Value::Float(*value); // Clone if value cannot be copied
-            if context.set_value(key.clone(), evalexpr_value.clone()).is_err() {
+            if context
+                .set_value(key.clone(), evalexpr_value.clone())
+                .is_err()
+            {
                 return Err(anyhow!("Failed to insert parameter '{}' into context", key));
             }
         }
-    
+
         // Insert variables into context with actual values
         for key in &self.expressions.order {
-            let expression = self.variables
-            .get(key)
-            .ok_or_else(|| anyhow!("Variable '{}' not found in config", key))?;
+            let expression = self
+                .variables
+                .get(key)
+                .ok_or_else(|| anyhow!("Variable '{}' not found in config", key))?;
             match eval_with_context(expression, &context) {
                 Ok(result) => {
                     // Insert the result of the evaluation into the context
                     if context.set_value(key.to_string(), result.clone()).is_err() {
-                        return Err(anyhow!("Failed to insert result for variable '{}' into context", key));
+                        return Err(anyhow!(
+                            "Failed to insert result for variable '{}' into context",
+                            key
+                        ));
                     }
-                },
-                Err(e) => return Err(anyhow!("Failed to evaluate expression for variable '{}': {}", key, e)),
+                }
+                Err(e) => {
+                    return Err(anyhow!(
+                        "Failed to evaluate expression for variable '{}': {}",
+                        key,
+                        e
+                    ))
+                }
             }
         }
-    
+
         let mut results = HashMap::new();
         // Evaluate expressions based on the specified order
         for key in &self.expressions.order {
             if let Some(expression) = self.variables.get(key).map(|vars| vars) {
                 match eval_with_context(expression, &context) {
-                    Ok(result) => {   
+                    Ok(result) => {
                         // Also insert the result into the results hashmap
                         results.insert(key.clone(), result);
-                    },
+                    }
                     Err(e) => {
-                        return Err(anyhow!("Failed to evaluate expression '{}' for key '{}': {}", expression, key, e));
+                        return Err(anyhow!(
+                            "Failed to evaluate expression '{}' for key '{}': {}",
+                            expression,
+                            key,
+                            e
+                        ));
                     }
                 }
             }
         }
-    
+
         Ok(results)
     }
 
-    fn interpolate(&self, /* interpolation parameters */) -> Result<(), String> {
+    fn interpolate(&self /* interpolation parameters */) -> Result<(), String> {
         for interp in self.interpolations.iter() {
             // Revised strategy instantiation using the enum
             let strategy = match interp.method.as_str() {
-                "LINEAR" => InterpolationStrategyEnum::Linear(Linear{}),
-                "NEAREST" => InterpolationStrategyEnum::NearestNeighbor(NearestNeighbor{}),
+                "LINEAR" => InterpolationStrategyEnum::Linear(Linear {}),
+                "NEAREST" => InterpolationStrategyEnum::NearestNeighbor(NearestNeighbor {}),
                 _ => return Err("Unsupported interpolation method".to_string()),
             };
 
             // Initialize NDInterpolation with the chosen strategy
-            let mut interpolator_map: HashMap<usize, HashMap<String, NDInterpolation>> = HashMap::new();
+            let mut interpolator_map: HashMap<usize, HashMap<String, NDInterpolation>> =
+                HashMap::new();
             if let Some(ref file_name) = interp.points[0].file {
                 let path = PathBuf::from(&interp.path).join(file_name);
                 let tensors = read_stress_tensors_from_file(&path).unwrap(); // Handle the Result using `?`
                 for tensor in tensors.iter() {
                     // Retrieve or create the inner HashMap for the current tensor (node)
-                    let node_map = interpolator_map.entry(tensor.0).or_insert_with(HashMap::new);
+                    let node_map = interpolator_map
+                        .entry(tensor.0)
+                        .or_insert_with(HashMap::new);
                     // Insert NDInterpolation instances for SXX, SYY, and SZZ
                     node_map.insert("SXX".to_string(), NDInterpolation::new(&strategy));
                     node_map.insert("SYY".to_string(), NDInterpolation::new(&strategy));
                     node_map.insert("SZZ".to_string(), NDInterpolation::new(&strategy));
-                    node_map.insert("SXY".to_string(), NDInterpolation::new(&strategy));         
-                    node_map.insert("SYZ".to_string(), NDInterpolation::new(&strategy));         
-                    node_map.insert("SZX".to_string(), NDInterpolation::new(&strategy));                                    
+                    node_map.insert("SXY".to_string(), NDInterpolation::new(&strategy));
+                    node_map.insert("SYZ".to_string(), NDInterpolation::new(&strategy));
+                    node_map.insert("SZX".to_string(), NDInterpolation::new(&strategy));
                 }
             }
             // Assuming interp.path does not change, move the PathBuf construction outside the first loop.
@@ -372,7 +417,7 @@ impl TimeSeries {
                 }
             }
 
-            for lc in self.loadcases.iter(){
+            for lc in self.loadcases.iter() {
                 let _sensor = self.read_sensorfile().unwrap();
                 let path = PathBuf::from(&self.path).join(&lc.file);
                 let file = File::open(path).unwrap();
@@ -381,7 +426,6 @@ impl TimeSeries {
         }
         Ok(())
     }
-
 }
 
 /// Represents the order in which expressions should be evaluated in a structural analysis context.
@@ -431,7 +475,6 @@ impl Expressions {
     }
 }
 
-
 #[derive(Debug, Deserialize)]
 pub struct SensorFile {
     pub no: usize,
@@ -441,7 +484,6 @@ pub struct SensorFile {
     pub description: String,
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::config::load_config; // Ensure this is correctly imported
@@ -450,7 +492,10 @@ mod tests {
     fn test_interpolate_timeseries() {
         let config_path = "tests/config.yaml";
         let config = load_config(config_path).expect("Failed to load config");
-        config.timeseries.interpolate().expect("Failed to interpolate timeseries");
+        config
+            .timeseries
+            .interpolate()
+            .expect("Failed to interpolate timeseries");
     }
 
     #[test]
@@ -460,19 +505,36 @@ mod tests {
 
         println!("config: {:#?}", config);
 
-        let results = config.timeseries.parse_input().expect("Failed to parse input");
+        let results = config
+            .timeseries
+            .parse_input()
+            .expect("Failed to parse input");
         println!("Results: {:#?}", results);
         // Example of improved error handling in test assertions
         let max_value_result = results.get("max_value").and_then(|v| v.as_float().ok());
-        assert!(max_value_result.is_some(), "max_value not found or not a float");
+        assert!(
+            max_value_result.is_some(),
+            "max_value not found or not a float"
+        );
         assert_eq!(max_value_result.unwrap(), 5.0, "max_value should be 5.0");
 
         let sin_of_a_result = results.get("sin_of_a").and_then(|v| v.as_float().ok());
-        assert!(sin_of_a_result.is_some(), "sin_of_a not found or not a float");
+        assert!(
+            sin_of_a_result.is_some(),
+            "sin_of_a not found or not a float"
+        );
         // Compare floating point numbers within a small range to account for float precision issues
-        assert!((sin_of_a_result.unwrap() - f64::sin(5.0)).abs() < 1e-6, "sin_of_a should match the sine of 5.0");
+        assert!(
+            (sin_of_a_result.unwrap() - f64::sin(5.0)).abs() < 1e-6,
+            "sin_of_a should match the sine of 5.0"
+        );
 
-        let final_expression = results.get("final_expression").and_then(|v| v.as_float().ok());
-        assert!((final_expression.unwrap() - 22.051083228736417).abs() < 1e-6, "Should match 22.0510832");
+        let final_expression = results
+            .get("final_expression")
+            .and_then(|v| v.as_float().ok());
+        assert!(
+            (final_expression.unwrap() - 22.051083228736417).abs() < 1e-6,
+            "Should match 22.0510832"
+        );
     }
 }

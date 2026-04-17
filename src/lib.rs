@@ -1,16 +1,16 @@
 #[cfg(any(feature = "cli", feature = "wasm"))]
-pub mod rainflow;
-#[cfg(any(feature = "cli", feature = "wasm"))]
 pub mod interpolate;
+#[cfg(any(feature = "cli", feature = "wasm"))]
+pub mod rainflow;
 pub use interpolate::{InterpolationStrategy, Linear, NDInterpolation};
 #[cfg(feature = "cli")]
 mod app_logic;
 #[cfg(feature = "cli")]
 pub mod config;
 #[cfg(feature = "cli")]
-pub mod stress;
-#[cfg(feature = "cli")]
 pub mod material;
+#[cfg(feature = "cli")]
+pub mod stress;
 #[cfg(feature = "cli")]
 pub mod timeseries;
 
