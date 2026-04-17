@@ -7,13 +7,11 @@ use std::path::Path;
 use std::fs::{File, read_to_string};
 use std::io::BufReader;
 use evalexpr::{eval_with_context, ContextWithMutableVariables, HashMapContext, Value};
-use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use crate::interpolate::{NDInterpolation, InterpolationStrategyEnum, Linear, NearestNeighbor};
+pub use crate::interpolate::Point;
 use crate::stress::read_stress_tensors_from_file;
 use anyhow::{Result, anyhow, Error};
-
-const TOLERANCE: f64 = 1e-5; // Example tolerance level
 
 #[derive(Debug, Deserialize)]
 pub struct TimeSeries {
@@ -81,38 +79,6 @@ pub struct Interpolation {
     pub sensor: Vec<String>,
     pub points: Vec<Point>,
 }
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct Point {
-    pub file: Option<String>,
-    pub coordinates: Vec<f64>,
-}
-
-impl Point {
-    pub fn new(file: Option<String>, coordinates: Vec<f64>) -> Self {
-        Point { file, coordinates }
-    }
-}
-
-impl Eq for Point {}
-
-impl PartialEq for Point {
-    fn eq(&self, other: &Self) -> bool {
-        self.coordinates.len() == other.coordinates.len() &&
-        self.coordinates.iter().zip(other.coordinates.iter()).all(|(a, b)| (a - b).abs() <= TOLERANCE)
-    }
-}
-
-impl Hash for Point {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        for &coord in &self.coordinates {
-            // Discretize the coordinate by rounding it to the precision defined by TOLERANCE
-            let discretized = (coord / TOLERANCE).round() * TOLERANCE;
-            discretized.to_bits().hash(state); // Hash the bitwise representation of the discretized value
-        }
-    }
-}
-
 
 /// Interpolation configuration for a structural analysis application.
 impl Interpolation {
