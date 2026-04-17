@@ -1,16 +1,14 @@
 #[cfg(any(feature = "cli", feature = "wasm"))]
-pub mod rainflow;
-#[cfg(any(feature = "cli", feature = "wasm"))]
 pub mod interpolate;
+#[cfg(any(feature = "cli", feature = "wasm"))]
+pub mod rainflow;
 pub use interpolate::{InterpolationStrategy, Linear, NDInterpolation};
-#[cfg(feature = "cli")]
-mod app_logic;
 #[cfg(feature = "cli")]
 pub mod config;
 #[cfg(feature = "cli")]
-pub mod stress;
-#[cfg(feature = "cli")]
 pub mod material;
+#[cfg(feature = "cli")]
+pub mod stress;
 #[cfg(feature = "cli")]
 pub mod timeseries;
 
@@ -25,5 +23,5 @@ pub fn run_rainflow(stress: &[f64]) -> Vec<f64> {
     // Combine the means and ranges into a single Vec to return.
     // This is just one way to handle the return; you might choose a different method
     // depending on how you want to process the data on the JavaScript side.
-    means.into_iter().chain(ranges.into_iter()).collect()
+    means.into_iter().chain(ranges).collect()
 }

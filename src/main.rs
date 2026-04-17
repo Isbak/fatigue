@@ -1,14 +1,14 @@
 //! A module for the main application logic for the fatigue assessment tool
-#[cfg(any(feature = "cli", feature = "wasm"))]
-pub mod rainflow;
 #[cfg(feature = "cli")]
 mod app_logic;
 #[cfg(feature = "cli")]
 pub mod config;
-#[cfg(feature = "cli")]
-pub mod stress;
 #[cfg(any(feature = "cli", feature = "wasm"))]
 pub mod interpolate;
+#[cfg(any(feature = "cli", feature = "wasm"))]
+pub mod rainflow;
+#[cfg(feature = "cli")]
+pub mod stress;
 pub use interpolate::{InterpolationStrategy, Linear, NDInterpolation};
 
 #[cfg(feature = "cli")]
@@ -29,24 +29,26 @@ fn main() {
                 .short('r')
                 .long("run")
                 .required(false)
-                .help("Run the program with the specified configuration file")
+                .help("Run the program with the specified configuration file"),
         )
         .arg(
             Arg::new("mode")
                 .short('m')
                 .long("mode")
                 .required(false)
-                .help("Sets the execution mode: cloud or local")
+                .help("Sets the execution mode: cloud or local"),
         )
         .arg(
             Arg::new("rainflow")
                 .short('a')
                 .long("rainflow")
                 .required(false)
-                .help("Perform rainflow counting on the input data")
-        )        
-        .after_help("Longer explanation to appear after the options when \
-                     displaying the help information from --help or -h")
+                .help("Perform rainflow counting on the input data"),
+        )
+        .after_help(
+            "Longer explanation to appear after the options when \
+                     displaying the help information from --help or -h",
+        )
         .get_matches();
 
     // Match the commands and execute the appropriate functionality
@@ -59,4 +61,3 @@ fn main() {
 
     // Additional CLI logic would be here
 }
-

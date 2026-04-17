@@ -1,12 +1,12 @@
 //! A module for validating and managing configurations for a structural analysis application.
 
+use crate::material::Material;
+use crate::timeseries::TimeSeries;
+use anyhow::{anyhow, Result};
 use serde::Deserialize;
+use serde_yaml;
 use std::fs;
 use std::path::Path;
-use serde_yaml;
-use anyhow::{Result, anyhow};
-use crate::material::Material; 
-use crate::timeseries::TimeSeries;
 
 /// Represents the configuration for a structural analysis application.
 #[derive(Debug, Deserialize)]
@@ -26,7 +26,7 @@ impl Config {
         self.solution.validate()?;
         self.material.validate()?;
         self.safety_factor.validate()?;
-        self.timeseries.validate()?;           
+        self.timeseries.validate()?;
         self.validate_sensor_against_sensorfile()?;
         Ok(())
     }
@@ -34,9 +34,11 @@ impl Config {
     /// Validates that all sensors specified in the `TimeSeries` configuration
     /// exist within the sensor file.
     fn validate_sensor_against_sensorfile(&self) -> Result<()> {
-        let sen = self.timeseries.read_sensorfile()
+        let sen = self
+            .timeseries
+            .read_sensorfile()
             .map_err(|e| anyhow!("Failed to read sensor file: {}", e))?;
-        
+
         for interp in self.timeseries.interpolations.iter() {
             for sensor in interp.sensor.iter() {
                 if !sen.iter().any(|s| s.name == *sensor) {
@@ -48,7 +50,6 @@ impl Config {
         Ok(())
     }
 }
-
 
 /// Represents the solution configuration for a structural analysis session.
 ///
@@ -82,8 +83,9 @@ impl Solution {
     /// - `run_type` is either "FAT" or "NONE".
     /// - `mode` is either "STRESS" or "NONE".
     /// - `output` is "JSON", indicating the output format.
-    /// Additionally, it invokes validation on nested structs (`stress_criteria`, `mean`, `node`, `damage`)
-    /// to ensure their configurations are also valid.
+    ///
+    /// Additionally, it invokes validation on nested structs (`stress_criteria`,
+    /// `mean`, `node`, `damage`) to ensure their configurations are also valid.
     ///
     /// # Returns
     ///
@@ -94,16 +96,25 @@ impl Solution {
     pub fn validate(&self) -> Result<()> {
         match self.run_type.as_str() {
             "FAT" | "NONE" => Ok(()),
-            _ => Err(anyhow!("run_type must be FAT or NONE, got {}", self.run_type)),
+            _ => Err(anyhow!(
+                "run_type must be FAT or NONE, got {}",
+                self.run_type
+            )),
         }?;
 
         match self.mode.as_str() {
             "STRESS" | "NONE" => Ok(()),
-            _ => Err(anyhow!("mode must be STRESS, STRAIN, or NONE, got {}", self.mode)),
+            _ => Err(anyhow!(
+                "mode must be STRESS, STRAIN, or NONE, got {}",
+                self.mode
+            )),
         }?;
         match self.output.as_str() {
             "JSON" => Ok(()),
-            _ => Err(anyhow!("output must be ANSYS or ASCII, got {}", self.output)),
+            _ => Err(anyhow!(
+                "output must be ANSYS or ASCII, got {}",
+                self.output
+            )),
         }?;
 
         self.stress_criteria.validate()?;
@@ -171,7 +182,10 @@ impl StressCriteria {
         };
         match self.method.as_str() {
             "VONMISES" | "MAXIMUM" | "SXXCRIT" | "NONE" => Ok(()),
-            _ => Err(anyhow!("method must be VONMISES, MAXIMUM, SXXCRIT, or NONE, got {}", self.method)),
+            _ => Err(anyhow!(
+                "method must be VONMISES, MAXIMUM, SXXCRIT, or NONE, got {}",
+                self.method
+            )),
         }?;
         Ok(())
     }
@@ -221,22 +235,31 @@ impl Mean {
     /// };
     /// assert!(invalid_mean_correction.validate().is_err());
     /// ```    
-    /// 
+    ///
     pub fn validate(&self) -> Result<()> {
         // Validate 'mean' field
         match self.mean.as_str() {
             "GOODMAN" | "LINEAR" | "BI-LINEAR" | "NONE" => Ok(()),
-            _ => Err(anyhow!("mean must be GOODMAN, LINEAR, BI-LINEAR, or NONE, got {}", self.mean)),
+            _ => Err(anyhow!(
+                "mean must be GOODMAN, LINEAR, BI-LINEAR, or NONE, got {}",
+                self.mean
+            )),
         }?;
 
         // Validate 'postfix' field
         match self.postfix.as_str() {
             "FIXEDMEAN" | "NONE" => Ok(()),
-            _ => Err(anyhow!("postfix must be FIXEDMEAN or NONE, got {}", self.postfix)),
+            _ => Err(anyhow!(
+                "postfix must be FIXEDMEAN or NONE, got {}",
+                self.postfix
+            )),
         }?;
 
         if !(0.0..=1.0).contains(&self.number.parse::<f64>().unwrap()) {
-            return Err(anyhow!("number must be between 0.0 and 1.0, got {}", self.number));
+            return Err(anyhow!(
+                "number must be between 0.0 and 1.0, got {}",
+                self.number
+            ));
         };
         Ok(())
     }
@@ -313,12 +336,18 @@ impl Damage {
     ///
     /// Returns `Ok(())` if both `error` and `dadm` are within the range [0.0, 1.0]. Otherwise,
     /// it returns a `ValidationError` detailing which field is out of the expected range.    
-    pub fn validate(&self) -> Result<()>{
+    pub fn validate(&self) -> Result<()> {
         if !(0.0..=1.0).contains(&self.error) {
-            return Err(anyhow!("error must be between 0.0 and 1.0, got {}", self.error));
+            return Err(anyhow!(
+                "error must be between 0.0 and 1.0, got {}",
+                self.error
+            ));
         }
         if !(0.0..=1.0).contains(&self.dadm) {
-            return Err(anyhow!("dadm must be between 0.0 and 1.0, got {}", self.dadm));
+            return Err(anyhow!(
+                "dadm must be between 0.0 and 1.0, got {}",
+                self.dadm
+            ));
         }
         Ok(())
     }
@@ -366,23 +395,26 @@ impl SafetyFactor {
     /// ```
     pub fn validate(&self) -> Result<()> {
         if !(1.0..=2.0).contains(&self.gmre) {
-            return Err(anyhow!("gmre must be between 1.0 and 2.0, got {}", self.gmre));
+            return Err(anyhow!(
+                "gmre must be between 1.0 and 2.0, got {}",
+                self.gmre
+            ));
         }
         if !(1.0..=2.0).contains(&self.gmrm) {
-            return Err(anyhow!("gmrm must be between 1.0 and 2.0, got {}", self.gmrm));
+            return Err(anyhow!(
+                "gmrm must be between 1.0 and 2.0, got {}",
+                self.gmrm
+            ));
         }
         if !(1.0..=2.0).contains(&self.gmfat) {
-            return Err(anyhow!("gmfat must be between 1.0 and 2.0, got {}", self.gmfat));
+            return Err(anyhow!(
+                "gmfat must be between 1.0 and 2.0, got {}",
+                self.gmfat
+            ));
         }
         Ok(())
     }
 }
-
-/// Additional struct and impl blocks would follow the same pattern:
-/// - Briefly describe the purpose of the struct.
-/// - Document each public field if necessary.
-/// - For each method, describe what it does, its parameters, and its return value.
-/// - Use examples in the documentation where appropriate.
 
 /// Loads the configuration from a YAML file.
 ///
@@ -397,7 +429,6 @@ impl SafetyFactor {
 /// # Errors
 ///
 /// This function will return an error if reading or parsing the configuration file fails.
-
 pub fn load_config<P: AsRef<Path>>(config_path: P) -> Result<Config, Box<dyn std::error::Error>> {
     let content = fs::read_to_string(config_path)?;
     let config: Config = serde_yaml::from_str(&content)?;
@@ -412,7 +443,11 @@ mod tests {
     fn test_load_config() {
         let config_path = "tests/config.yaml"; // Adjust the path as needed
         let config = load_config(config_path).expect("Failed to load config");
-        assert!(config.validate().is_ok(), "Expected Ok(()) but got Err with {:?}", config.validate());
+        assert!(
+            config.validate().is_ok(),
+            "Expected Ok(()) but got Err with {:?}",
+            config.validate()
+        );
         // Additional tests as needed
     }
 }
